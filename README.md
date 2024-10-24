@@ -1,2 +1,2 @@
 # snapmock
-Snapmock is a snapshotting-mocking library for Java
+Snapmock is a snapshoting-mocking library for Java
