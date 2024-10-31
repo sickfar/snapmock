@@ -15,8 +15,6 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy
 import org.springframework.context.annotation.Import
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.util.*
-import kotlin.jvm.optionals.getOrNull
 
 @Configuration
 @EnableConfigurationProperties(SnapConfigurationProperties::class)
@@ -28,8 +26,10 @@ open class SnapConfiguration(
 ) {
 
     @Bean
-    open fun objectMapperHolder(customizer: Optional<SnapMockObjectMapperCustomizer>): SnapObjectMapperHolder {
-        return SnapObjectMapperHolder(objectMapper(customizer.getOrNull()))
+    open fun objectMapperHolder(customizers: List<SnapMockObjectMapperCustomizer>): SnapObjectMapperHolder {
+        return SnapObjectMapperHolder(objectMapper { mapper ->
+            customizers.forEach { it.customize(mapper) }
+        })
     }
 
     @Bean
@@ -49,5 +49,5 @@ open class SnapConfigurationProperties @ConstructorBinding constructor(
 )
 
 class SnapObjectMapperHolder(
-    val objectMapper: ObjectMapper = objectMapper(null)
+    val objectMapper: ObjectMapper
 )

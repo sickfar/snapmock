@@ -32,7 +32,11 @@ class SnapWriter(
                 PosixFilePermission.GROUP_READ,
                 PosixFilePermission.OTHERS_READ
             )
-            directory.setPosixFilePermissions(perms)
+            try {
+                directory.setPosixFilePermissions(perms)
+            } catch (e: Exception) {
+                log.warn { "Cannot set permissions for $directory" }
+            }
             log.trace { "Permissions $perms set to a directory $directory" }
         }
         val snapFile = directory.resolve(fileName).toAbsolutePath()
@@ -43,7 +47,11 @@ class SnapWriter(
         }
         // TODO make permissions customizable
         val perms = snapFile.getPosixFilePermissions() + PosixFilePermission.GROUP_READ + PosixFilePermission.OTHERS_READ
-        snapFile.setPosixFilePermissions(perms)
+        try {
+            snapFile.setPosixFilePermissions(perms)
+        } catch (e: Exception) {
+            log.warn { "Cannot set permissions for $directory" }
+        }
         log.trace { "Permissions $perms set to a file $snapFile" }
     }
 
@@ -54,7 +62,9 @@ class SnapReader(
 ) {
 
     fun read(snapFile: Path): SnapData {
-        TODO()
+        Files.newInputStream(snapFile).use {
+            return objectMapper.readValue(it, SnapData::class.java)
+        }
     }
 
 }

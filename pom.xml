@@ -12,6 +12,7 @@
         <module>snap-spring-boot-2</module>
         <module>mock-mockito</module>
         <module>snapmock-core</module>
+        <module>mock-test-generator</module>
     </modules>
 
     <properties>

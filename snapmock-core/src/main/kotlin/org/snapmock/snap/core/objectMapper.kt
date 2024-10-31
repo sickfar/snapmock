@@ -12,7 +12,7 @@ fun interface SnapMockObjectMapperCustomizer {
     fun customize(objectMapper: ObjectMapper)
 }
 
-fun objectMapper(customizer: SnapMockObjectMapperCustomizer?): ObjectMapper {
+fun objectMapper(customizer: SnapMockObjectMapperCustomizer? = null): ObjectMapper {
     val objectMapper = jacksonObjectMapper()
         .configure(SerializationFeature.FAIL_ON_SELF_REFERENCES, false)
         .configure(SerializationFeature.WRITE_SELF_REFERENCES_AS_NULL, true)
