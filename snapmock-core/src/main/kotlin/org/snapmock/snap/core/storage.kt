@@ -5,6 +5,10 @@ class InvocationStorage {
         override fun initialValue() = mutableListOf<InvocationSnap>()
     }
 
+    private val factoryInvocations = object : ThreadLocal<MutableList<FactoryInvocationSnap>>() {
+        override fun initialValue() = mutableListOf<FactoryInvocationSnap>()
+    }
+
     private val isRecording = object : ThreadLocal<Boolean>() {
         override fun initialValue() = false
     }
@@ -23,10 +27,19 @@ class InvocationStorage {
         }
     }
 
-    fun get(): List<InvocationSnap> = invocations.get()
+    fun record(snap: FactoryInvocationSnap) {
+        if (isRecording.get()) {
+            factoryInvocations.get().add(snap)
+        }
+    }
+
+    fun getDependencyInvocations(): List<InvocationSnap> = invocations.get()
+
+    fun getFactoryInvocations(): List<FactoryInvocationSnap> = factoryInvocations.get()
 
     fun reset() {
         isRecording.set(false)
         invocations.remove()
+        factoryInvocations.remove()
     }
 }

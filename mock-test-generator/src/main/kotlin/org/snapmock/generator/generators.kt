@@ -1,65 +1,57 @@
 package org.snapmock.generator
 
-import org.snapmock.generator.data.*
+import org.snapmock.generator.data.Assertion
+import org.snapmock.generator.data.Mock
+import org.snapmock.generator.data.SnapMockTest
 import org.snapmock.generator.framework.assertion.hamcrest.HamcrestAssertGenerator
 import org.snapmock.generator.framework.mock.mockito.MockitoMockGenerator
-import org.snapmock.generator.framework.test.junit.JUnitTestFrameworkGenerator
+import org.snapmock.generator.lang.common.Field
+import org.snapmock.generator.lang.common.JvmAnnotation
 import org.snapmock.generator.lang.java.JavaCodeGenerator
 import org.snapmock.generator.lang.kotlin.KotlinCodeGenerator
 import org.snapmock.snap.core.InvocationSnap
+import org.snapmock.snap.core.Source
 import java.nio.file.Path
 
-fun testGenerator(testFramework: TestFramework) = when (testFramework) {
-    TestFramework.JUNIT -> JUnitTestFrameworkGenerator()
+fun assertGenerator(assertFramework: AssertFramework, testFramework: TestFramework) = when (assertFramework) {
+    AssertFramework.HAMCREST -> HamcrestAssertGenerator(testFramework)
 }
 
-fun assertGenerator(assertFramework: AssertFramework) = when (assertFramework) {
-    AssertFramework.HAMCREST -> HamcrestAssertGenerator()
+fun mockGenerator(mockFramework: MockFramework, testFramework: TestFramework) = when (mockFramework) {
+    MockFramework.MOCKITO -> MockitoMockGenerator(testFramework)
 }
 
-fun mockGenerator(mockFramework: MockFramework) = when (mockFramework) {
-    MockFramework.MOCKITO -> MockitoMockGenerator()
-}
-
-fun codeGenerator(lang: Lang) = when (lang) {
-    Lang.JAVA -> JavaCodeGenerator()
-    Lang.KOTLIN -> KotlinCodeGenerator()
+fun codeGenerator(lang: Lang, mode: Mode, output: Path) = when (lang) {
+    Lang.JAVA -> JavaCodeGenerator(mode, output)
+    Lang.KOTLIN -> KotlinCodeGenerator(mode, output)
 }
 
 interface CodeGenerator {
 
-    fun generate(output: Path, forClass: String, snaps: List<SnapMockTest>): Path
-
-}
-
-interface TestFrameworkGenerator {
-
-    fun generateTestClassAttributes(): TestClassAttributes?
-
-    fun generateTestMethodAttributes(): TestMethodAttributes?
+    fun generate(className: String, methodName: String?, tests: List<SnapMockTest>): Path
 
 }
 
 interface MockFrameworkGenerator {
 
-    fun generateTestClassAttributes(): TestClassAttributes?
+    fun generateTestClassAnnotations(): List<JvmAnnotation>
 
-    fun generateTestMethodAttributes(): TestMethodAttributes?
+    fun generateTestMethodAnnotations(): List<JvmAnnotation>
 
-    fun generateTestedElement(invocation: InvocationSnap): TestElement
+    fun generateSubject(invocation: InvocationSnap, source: Source): Field
 
-    fun generateMockingDependency(invocation: InvocationSnap): TestElement
+    fun generateMockingDependency(invocation: InvocationSnap, source: Source, index: Int): Field
 
-    fun generateMock(invocation: InvocationSnap): Mock
+    fun generateMock(invocation: InvocationSnap, source: Source, index: Int): Mock
 
 }
 
 interface AssertFrameworkGenerator {
 
-    fun generateTestClassAttributes(): TestClassAttributes?
+    fun generateTestClassAnnotations(): List<JvmAnnotation>
 
-    fun generateTestMethodAttributes(): TestMethodAttributes?
+    fun generateTestMethodAttributes(): List<JvmAnnotation>
 
-    fun generateAssertions(invocation: InvocationSnap): Assertion
+    fun generateAssertions(invocation: InvocationSnap, source: Source): List<Assertion>
 
 }

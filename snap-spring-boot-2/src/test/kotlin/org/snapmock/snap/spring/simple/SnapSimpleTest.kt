@@ -38,7 +38,7 @@ class SnapSimpleTest {
         val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
         assertEquals(response.statusCode(), 200)
         val file = Files.list(dir)
-            .filter { it.name.startsWith("snap_${HelloController::class.qualifiedName}")
+            .filter { it.name.startsWith("${HelloController::class.simpleName}")
                     && it.name.endsWith(".json") }
             .findFirst()
             .getOrNull()

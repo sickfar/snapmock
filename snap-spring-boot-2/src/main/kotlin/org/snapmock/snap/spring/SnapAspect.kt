@@ -10,10 +10,7 @@ import org.aspectj.lang.annotation.Around
 import org.aspectj.lang.annotation.Aspect
 import org.aspectj.lang.annotation.Pointcut
 import org.aspectj.lang.reflect.MethodSignature
-import org.snapmock.snap.core.InvocationSnap
-import org.snapmock.snap.core.InvocationStorage
-import org.snapmock.snap.core.SnapData
-import org.snapmock.snap.core.SnapWriter
+import org.snapmock.snap.core.*
 import org.springframework.aop.framework.ProxyFactory
 import org.springframework.stereotype.Component
 import java.lang.reflect.Constructor
@@ -121,12 +118,17 @@ open class SnapAspect(
             log.trace { "Dependency method in public: $isPublic" }
             try {
                 val result = method.invoke(dependency, *args)
-                if (isPublic) {
+                if (method.isAnnotationPresent(SnapDepFactory::class.java)) {
+                    snapFactoryInvocation(parameterType, invocation)
+                    return@MethodInterceptor buildDependencySpy(parameterType, result)
+                } else if (isPublic) {
                     snapDependencyInvocation(parameterType, invocation, result)
                 }
                 return@MethodInterceptor result
             } catch (e: InvocationTargetException) {
-                if (isPublic) {
+                if (method.isAnnotationPresent(SnapDepFactory::class.java)) {
+                    snapFactoryInvocationException(parameterType, invocation, e)
+                } else if (isPublic) {
                     snapDependencyInvocationException(parameterType, invocation, e.targetException)
                 }
                 throw e
@@ -152,6 +154,27 @@ open class SnapAspect(
             returnType = methodReturnType.toCanonical(),
             arguments = listOf(*invocation.arguments),
             result = result,
+            argumentTypes = null,
+            exceptionType = null,
+            exceptionMessage = null,
+        )
+        storage.record(snap)
+    }
+
+    private fun snapFactoryInvocation(dependencyType: Class<*>, invocation: MethodInvocation) {
+        log.debug { "Dependency factory invocation: $invocation" }
+        val method = invocation.method
+        val methodParameters = Arrays.stream(method.genericParameterTypes)
+            .map { type: Type? -> typeFactory.constructType(type) }
+            .map { obj: JavaType -> obj.toCanonical() }
+            .toList()
+        val methodReturnType = typeFactory.constructType(method.genericReturnType)
+        val snap = FactoryInvocationSnap(
+            className = dependencyType.name,
+            methodName = method.name,
+            parameterTypes = methodParameters,
+            returnType = methodReturnType.toCanonical(),
+            arguments = listOf(*invocation.arguments),
             argumentTypes = null,
             exceptionType = null,
             exceptionMessage = null,
@@ -185,6 +208,31 @@ open class SnapAspect(
         storage.record(snap)
     }
 
+    private fun snapFactoryInvocationException(
+        dependencyType: Class<*>,
+        invocation: MethodInvocation,
+        exception: Throwable
+    ) {
+        log.debug { "Dependency factory invocation exception: $invocation, ${exception.message}" }
+        val method = invocation.method
+        val methodParameters = Arrays.stream(method.genericParameterTypes)
+            .map { type: Type? -> typeFactory.constructType(type) }
+            .map { obj: JavaType -> obj.toCanonical() }
+            .toList()
+        val methodReturnType = typeFactory.constructType(method.genericReturnType)
+        val snap = FactoryInvocationSnap(
+            className = dependencyType.name,
+            methodName = method.name,
+            parameterTypes = methodParameters,
+            returnType = methodReturnType.toCanonical(),
+            arguments = listOf(*invocation.arguments),
+            exceptionType = exception.javaClass.name,
+            exceptionMessage = exception.message,
+            argumentTypes = null
+        )
+        storage.record(snap)
+    }
+
     private fun snapInvocation(joinPoint: ProceedingJoinPoint, result: Any) {
         log.debug { "Snapping invocation" }
         val signature = joinPoint.signature as MethodSignature
@@ -210,7 +258,8 @@ open class SnapAspect(
         )
         val snap = SnapData(
             main = main,
-            dependencies = storage.get()
+            dependencies = storage.getDependencyInvocations(),
+            factories = storage.getFactoryInvocations()
         )
         writer.write(snap)
         storage.reset()
@@ -241,7 +290,8 @@ open class SnapAspect(
         )
         val snap = SnapData(
             main = main,
-            dependencies = storage.get()
+            dependencies = storage.getDependencyInvocations(),
+            factories = storage.getFactoryInvocations()
         )
         writer.write(snap)
         storage.reset()

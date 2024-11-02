@@ -2,6 +2,7 @@ package org.snapmock.snap.core
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import mu.KotlinLogging
+import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermission
@@ -20,7 +21,7 @@ class SnapWriter(
     fun write(snap: SnapData) {
         val now = Instant.now()
         val nowFormatted = DateTimeFormatter.ISO_INSTANT.format(now)
-        val fileName = "snap_${snap.main.className}_${snap.main.methodName}_${nowFormatted}.json"
+        val fileName = "${snap.main.className.substringAfterLast(".")}_${snap.main.methodName}_${nowFormatted}.json"
             .replace("[^a-zA-Z0-9.\\-]", "_")
         log.trace { "Snap writing to $fileName" }
         if (Files.notExists(directory)) {
@@ -46,7 +47,8 @@ class SnapWriter(
             log.info { "Snap file written: $snapFile" }
         }
         // TODO make permissions customizable
-        val perms = snapFile.getPosixFilePermissions() + PosixFilePermission.GROUP_READ + PosixFilePermission.OTHERS_READ
+        val perms =
+            snapFile.getPosixFilePermissions() + PosixFilePermission.GROUP_READ + PosixFilePermission.OTHERS_READ
         try {
             snapFile.setPosixFilePermissions(perms)
         } catch (e: Exception) {
@@ -61,10 +63,18 @@ class SnapReader(
     private val objectMapper: ObjectMapper,
 ) {
 
-    fun read(snapFile: Path): SnapData {
-        Files.newInputStream(snapFile).use {
-            return objectMapper.readValue(it, SnapData::class.java)
+    fun read(source: Source): SnapDataSource {
+        val snap = when (source) {
+            is StreamSource -> source.stream.use { readStream(it) }
+            is PathSource -> Files.newInputStream(source.path).use { readStream(it) }
+            is ClassPathResourceSource -> checkNotNull(javaClass.getResourceAsStream(source.resourcePath)) {
+                "Resource ${source.resourcePath} does not exist"
+            }.use { readStream(it) }
         }
+        return SnapDataSource(source, snap)
     }
+
+    private fun readStream(it: InputStream): SnapData =
+        objectMapper.readValue(it, SnapData::class.java)
 
 }
