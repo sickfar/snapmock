@@ -46,7 +46,7 @@ fun buildStaticMethodCall(expression: StaticMethod): CodeBlock =
             .collect(CodeBlock.joining(", "))).add(")").build()
 
 fun buildInstanceMethodCall(expression: InstanceMethod): CodeBlock {
-    val codeBlockBuilder = CodeBlock.builder();
+    val codeBlockBuilder = CodeBlock.builder()
     if (expression.value is This) {
         codeBlockBuilder.add("${expression.methodName}(")
     } else {
@@ -61,7 +61,7 @@ fun buildInstanceMethodCall(expression: InstanceMethod): CodeBlock {
 }
 
 fun buildLambda(expression: Lambda): CodeBlock {
-    val codeBlockBuilder = CodeBlock.builder();
+    val codeBlockBuilder = CodeBlock.builder()
     if (expression.parameters.size == 1) {
         codeBlockBuilder.add(expression.parameters.first()).add(" -> ")
     } else {
