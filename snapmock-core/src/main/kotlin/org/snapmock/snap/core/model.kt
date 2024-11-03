@@ -5,7 +5,7 @@ data class InvocationSnap(
     val methodName: String,
     val parameterTypes: List<String>,
     val arguments: List<Any>,
-    val argumentTypes: List<String>?,
+    val argumentTypes: List<String?>?,
     val returnType: String,
     val result: Any?,
     val exceptionType: String?,
@@ -25,6 +25,6 @@ data class FactoryInvocationSnap(
 
 data class SnapData(
     val main: InvocationSnap,
-    val dependencies: Collection<InvocationSnap>,
-    val factories: Collection<FactoryInvocationSnap>
+    val dependencies: List<InvocationSnap>,
+    val factories: List<FactoryInvocationSnap>
 )

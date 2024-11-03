@@ -1,7 +1,6 @@
 package org.snapmock.generator.lang.java
 
 import com.palantir.javapoet.*
-import org.mockito.Mockito
 import org.snapmock.generator.CodeGenerator
 import org.snapmock.generator.Mode
 import org.snapmock.generator.data.SnapMockTest
@@ -9,6 +8,10 @@ import org.snapmock.generator.lang.common.ClassAnnotationExpression
 import org.snapmock.generator.lang.common.Field
 import org.snapmock.generator.lang.common.JvmAnnotation
 import org.snapmock.generator.lang.common.StringAnnotationExpression
+import org.snapmock.snap.core.ClassPathResourceSource
+import org.snapmock.snap.core.Source
+import org.snapmock.snap.core.TestSupport
+import org.snapmock.snap.core.inputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import javax.lang.model.element.Modifier
@@ -57,18 +60,33 @@ class JavaCodeGenerator(
             test.testMethodAnnotations.forEach {
                 testMethodBuilder.addAnnotation(buildAnnotation(it))
             }
+            // create source var
+            val resourcePath = packageName.replace('.', '/')
+            val resourceName = "%s_%s_%s.json".format(simpleClassName, methodName, index)
+
+            testMethodBuilder.addStatement(CodeBlock.of(
+                "final var source = new \$T(\$L.class, \$S)",
+                ClassPathResourceSource::class.java,
+                testClassName,
+                resourceName
+            ))
+
             test.mocks.forEach { mock ->
                 testMethodBuilder.addStatement(buildCodeBlockFromExpression(mock.expression))
             }
-            test.assertions.forEach { assertion ->
-                testMethodBuilder.addStatement(buildCodeBlockFromExpression(assertion.expression))
+            test.assertion.statements.forEach { statement ->
+                testMethodBuilder.addStatement(buildCodeBlockFromExpression(statement))
             }
             testClassBuilder.addMethod(testMethodBuilder.build())
+            writeTestResource(test.source, resourcePath, resourceName)
         }
-        val javaFile = JavaFile.builder(packageName, testClassBuilder.build())
-            .addStaticImport(Mockito::class.java, "*")
-            .build()
-        return javaFile.writeToPath(codeDirectory)
+        val javaFileBuilder = JavaFile.builder(packageName, testClassBuilder.build())
+        javaFileBuilder.addStaticImport(TestSupport::class.java, "*")
+        tests.stream().flatMap { it.statics.stream() }.distinct().forEach {
+            javaFileBuilder.addStaticImport(ClassName.bestGuess(it), "*")
+        }
+        val written = javaFileBuilder.build().writeToPath(codeDirectory)
+        return written
     }
 
     private fun buildAnnotation(it: JvmAnnotation): AnnotationSpec? {
@@ -96,5 +114,17 @@ class JavaCodeGenerator(
             fieldSpecBuilder.initializer(buildCodeBlockFromExpression(it))
         }
         return fieldSpecBuilder.build()
+    }
+
+    private fun writeTestResource(source: Source, resourcePath: String, resourceName: String) {
+        val dir = this.resourcesDirectory.resolve(resourcePath)
+        if (!Files.exists(dir)) {
+            Files.createDirectories(dir)
+        }
+        Files.newOutputStream(dir.resolve(resourceName)).use { outStream ->
+            inputStream(source).use { inStream ->
+                inStream.transferTo(outStream)
+            }
+        }
     }
 }

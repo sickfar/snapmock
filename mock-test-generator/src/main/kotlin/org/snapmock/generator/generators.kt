@@ -34,24 +34,28 @@ interface CodeGenerator {
 
 interface MockFrameworkGenerator {
 
+    fun generateStatics(): List<String>
+
     fun generateTestClassAnnotations(): List<JvmAnnotation>
 
     fun generateTestMethodAnnotations(): List<JvmAnnotation>
 
     fun generateSubject(invocation: InvocationSnap, source: Source): Field
 
-    fun generateMockingDependency(invocation: InvocationSnap, source: Source, index: Int): Field
+    fun generateMockingDependency(invocation: InvocationSnap, source: Source, depIndex: Int): Field
 
-    fun generateMock(invocation: InvocationSnap, source: Source, index: Int): Mock
+    fun generateMock(invocation: InvocationSnap, source: Source, depIndex: Int): Mock
 
 }
 
 interface AssertFrameworkGenerator {
 
+    fun generateStatics(): List<String>
+
     fun generateTestClassAnnotations(): List<JvmAnnotation>
 
     fun generateTestMethodAttributes(): List<JvmAnnotation>
 
-    fun generateAssertions(invocation: InvocationSnap, source: Source): List<Assertion>
+    fun generateAssertions(invocation: InvocationSnap, source: Source): Assertion
 
 }

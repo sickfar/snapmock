@@ -11,7 +11,6 @@ class SnapMockGeneratorMainTest {
     @Test
     fun testProcessJUnitMockitoHamcrestJavaPerFile() {
         val output = Path.of("./.gen/")
-        val resourceStream = {}.javaClass.getResourceAsStream("/snap/HelloController_get_2024_11_01T20_52_33_762752Z.json")!!
         process(
             MockFramework.MOCKITO,
             TestFramework.JUNIT,
@@ -19,7 +18,9 @@ class SnapMockGeneratorMainTest {
             Lang.JAVA,
             Mode.PER_SNAP_FILE,
             output,
-            listOf(StreamSource(resourceStream))
+            listOf(StreamSource {
+                javaClass.getResourceAsStream("/snap/HelloController_get_2024_11_01T20_52_33_762752Z.json")!!
+            })
         )
     }
 

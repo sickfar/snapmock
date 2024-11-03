@@ -11,7 +11,7 @@ class CodeBuilderKtTest {
 
     @Test
     fun testBuildStaticFieldRef() {
-        val expression = StaticFieldReference(
+        val expression = StaticFieldRef(
             fieldName = "out",
             typeName = System::class.qualifiedName!!
         )
@@ -96,12 +96,12 @@ class CodeBuilderKtTest {
     fun testBuildInstanceMethodCall_StaticField() {
         val expression = InstanceMethod(
             typeName = javaClass.name,
-            value = StaticFieldReference(
+            value = StaticFieldRef(
                 fieldName = "out",
                 typeName = System::class.qualifiedName!!,
             ),
             methodName = "println",
-            arguments = listOf(StringExpr("Hello World!"))
+            arguments = listOf(StringLiteral("Hello World!"))
         )
         val code = buildInstanceMethodCall(expression)
         assertEquals("java.lang.System.out.println(\"Hello World!\")", code.toString())
@@ -114,12 +114,12 @@ class CodeBuilderKtTest {
             body = listOf(
                 InstanceMethod(
                     typeName = javaClass.name,
-                    value = StaticFieldReference(
+                    value = StaticFieldRef(
                         fieldName = "out",
                         typeName = System::class.qualifiedName!!,
                     ),
                     methodName = "println",
-                    arguments = listOf(StringExpr("Hello World!"))
+                    arguments = listOf(StringLiteral("Hello World!"))
                 )
             )
         )
@@ -134,7 +134,7 @@ class CodeBuilderKtTest {
             body = listOf(
                 InstanceMethod(
                     typeName = javaClass.name,
-                    value = StaticFieldReference(
+                    value = StaticFieldRef(
                         fieldName = "out",
                         typeName = System::class.qualifiedName!!,
                     ),
@@ -154,7 +154,7 @@ class CodeBuilderKtTest {
             body = listOf(
                 InstanceMethod(
                     typeName = javaClass.name,
-                    value = StaticFieldReference(
+                    value = StaticFieldRef(
                         fieldName = "out",
                         typeName = System::class.qualifiedName!!,
                     ),
@@ -174,7 +174,7 @@ class CodeBuilderKtTest {
             body = listOf(
                 InstanceMethod(
                     typeName = javaClass.name,
-                    value = StaticFieldReference(
+                    value = StaticFieldRef(
                         fieldName = "out",
                         typeName = System::class.qualifiedName!!,
                     ),
@@ -183,7 +183,7 @@ class CodeBuilderKtTest {
                 ),
                 InstanceMethod(
                     typeName = javaClass.name,
-                    value = StaticFieldReference(
+                    value = StaticFieldRef(
                         fieldName = "out",
                         typeName = System::class.qualifiedName!!,
                     ),
@@ -229,7 +229,7 @@ class CodeBuilderKtTest {
                 StaticMethod(
                     typeName = ArgumentMatchers::class.qualifiedName!!,
                     methodName = "eq",
-                    arguments = listOf(StringExpr("Hello"))
+                    arguments = listOf(StringLiteral("Hello"))
                 )
             )
         )

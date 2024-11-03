@@ -6,8 +6,11 @@ import org.snapmock.generator.lang.common.*
 
 fun buildCodeBlockFromExpression(expression: SyntaxElement): CodeBlock {
     return when (expression) {
-        is StringExpr -> CodeBlock.of("\"${expression.value}\"")
-        is StaticFieldReference -> buildStaticFieldRef(expression)
+        is NumericLiteral -> CodeBlock.of("${expression.value}")
+        is StringLiteral -> CodeBlock.of("\"${expression.value}\"")
+        is ClassRef -> CodeBlock.of("\$T.class", expression.name)
+        is VariableDefinition -> buildVariableDefinition(expression)
+        is StaticFieldRef -> buildStaticFieldRef(expression)
         is NamedRef -> CodeBlock.of(expression.name)
         is StaticMethod -> buildStaticMethodCall(expression)
         is InstanceMethod -> buildInstanceMethodCall(expression)
@@ -16,7 +19,20 @@ fun buildCodeBlockFromExpression(expression: SyntaxElement): CodeBlock {
     }
 }
 
-fun buildStaticFieldRef(expression: StaticFieldReference): CodeBlock =
+fun buildVariableDefinition(expression: VariableDefinition): CodeBlock {
+    val cbBuilder = if (expression.final) {
+        CodeBlock.builder().add("final ")
+    } else {
+        CodeBlock.builder()
+    }
+    cbBuilder.add("var \$L = ", expression.name)
+    if (expression.init != null) {
+        cbBuilder.add(buildCodeBlockFromExpression(expression.init))
+    }
+    return cbBuilder.build()
+}
+
+fun buildStaticFieldRef(expression: StaticFieldRef): CodeBlock =
     CodeBlock.of("\$T.\$L", ClassName.bestGuess(expression.typeName), expression.fieldName)
 
 fun buildStaticMethodCall(expression: StaticMethod): CodeBlock =

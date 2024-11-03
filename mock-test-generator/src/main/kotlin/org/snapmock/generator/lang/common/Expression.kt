@@ -22,13 +22,23 @@ data class Lambda(
     val body: List<SyntaxElement>
 ): Invokable
 
-data class StringExpr(
+interface Literal : SyntaxElement
+
+data class StringLiteral(
     val value: String
-): SyntaxElement
+): Literal
+
+data class NumericLiteral(
+    val value: Number
+): Literal
 
 interface NamedRef: SyntaxElement {
     val name: String
 }
+
+data class FieldRef(
+    override val name: String,
+): NamedRef
 
 data class Field(
     override val name: String,
@@ -41,6 +51,7 @@ data class Field(
 data class VariableDefinition(
     val typeName: String,
     override val name: String,
+    val final: Boolean = true,
     val init: SyntaxElement?
 ): NamedRef
 
@@ -54,11 +65,22 @@ data class Parameter(
     val typeName: String,
 ): NamedRef
 
-data class StaticFieldReference(
+data class ClassRef(
+    override val name: String,
+): NamedRef
+
+data class StaticFieldRef(
     val fieldName: String,
     val typeName: String,
 ): NamedRef {
     override val name: String = "$typeName.$fieldName"
+}
+
+data class InstanceFieldRef(
+    val fieldName: String,
+    val instance: SyntaxElement
+): NamedRef {
+    override val name: String = "$instance.$fieldName"
 }
 
 class This: NamedRef {

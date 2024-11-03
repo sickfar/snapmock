@@ -3,6 +3,7 @@ package org.snapmock.generator.data
 import org.snapmock.generator.lang.common.Field
 import org.snapmock.generator.lang.common.JvmAnnotation
 import org.snapmock.generator.lang.common.SyntaxElement
+import org.snapmock.snap.core.Source
 import java.nio.file.Path
 
 interface Mock {
@@ -31,26 +32,28 @@ data class ThrowMock(
 ): Mock
 
 interface Assertion {
-    val expression: SyntaxElement
+    val statements: List<SyntaxElement>
 }
 
 data class ResultAssertion (
-    val expected: Any,
-    override val expression: SyntaxElement
+    val expected: Any?,
+    override val statements: List<SyntaxElement>
 ): Assertion
 
 data class ThrowsAssertion(
     val expectedExceptionClass: String,
-    val expectedExceptionMessage: String,
-    override val expression: SyntaxElement
+    val expectedExceptionMessage: String?,
+    override val statements: List<SyntaxElement>
 ): Assertion
 
 data class SnapMockTest(
+    val source: Source,
+    val statics: List<String>,
     val testClassAnnotations: List<JvmAnnotation>,
     val testMethodAnnotations: List<JvmAnnotation>,
     val subject: Field,
     val subjectMethod: String,
     val dependencies: Set<Field>,
     val mocks: List<Mock>,
-    val assertions: List<Assertion>,
+    val assertion: Assertion,
 )

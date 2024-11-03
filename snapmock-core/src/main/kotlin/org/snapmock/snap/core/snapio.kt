@@ -59,19 +59,23 @@ class SnapWriter(
 
 }
 
+fun inputStream(source: Source): InputStream {
+    return when (source) {
+        is StreamSource -> source.streamSupplier.get()
+        is PathSource -> Files.newInputStream(source.path)
+        is ClassPathResourceSource -> checkNotNull(source.aClass.getResourceAsStream(source.resourcePath)) {
+            "Resource ${source.resourcePath} does not exist"
+        }
+    }
+}
+
 class SnapReader(
     private val objectMapper: ObjectMapper,
 ) {
 
-    fun read(source: Source): SnapDataSource {
-        val snap = when (source) {
-            is StreamSource -> source.stream.use { readStream(it) }
-            is PathSource -> Files.newInputStream(source.path).use { readStream(it) }
-            is ClassPathResourceSource -> checkNotNull(javaClass.getResourceAsStream(source.resourcePath)) {
-                "Resource ${source.resourcePath} does not exist"
-            }.use { readStream(it) }
-        }
-        return SnapDataSource(source, snap)
+    fun read(source: Source): SnapFromSource {
+        val snap = inputStream(source).use { readStream(it) }
+        return SnapFromSource(source, snap)
     }
 
     private fun readStream(it: InputStream): SnapData =
