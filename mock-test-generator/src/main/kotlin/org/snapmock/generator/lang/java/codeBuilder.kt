@@ -11,6 +11,8 @@ fun buildCodeBlockFromExpression(expression: SyntaxElement): CodeBlock {
         is ClassRef -> CodeBlock.of("\$T.class", expression.name)
         is VariableDefinition -> buildVariableDefinition(expression)
         is StaticFieldRef -> buildStaticFieldRef(expression)
+        is InstanceFieldRef -> buildInstanceFieldRef(expression)
+        is This -> buildThis(expression)
         is NamedRef -> CodeBlock.of(expression.name)
         is StaticMethod -> buildStaticMethodCall(expression)
         is InstanceMethod -> buildInstanceMethodCall(expression)
@@ -25,15 +27,34 @@ fun buildVariableDefinition(expression: VariableDefinition): CodeBlock {
     } else {
         CodeBlock.builder()
     }
-    cbBuilder.add("var \$L = ", expression.name)
     if (expression.init != null) {
-        cbBuilder.add(buildCodeBlockFromExpression(expression.init))
+        cbBuilder.add("var \$L", expression.name)
+        cbBuilder.add(" = ").add(buildCodeBlockFromExpression(expression.init))
+    } else {
+        val typeName = ClassName.bestGuess(expression.typeName).let {
+            if (it.isBoxedPrimitive) {
+                it.unbox()
+            } else {
+                it
+            }
+        }
+        cbBuilder.add("\$T \$L", typeName, expression.name)
     }
     return cbBuilder.build()
 }
 
 fun buildStaticFieldRef(expression: StaticFieldRef): CodeBlock =
     CodeBlock.of("\$T.\$L", ClassName.bestGuess(expression.typeName), expression.fieldName)
+
+fun buildInstanceFieldRef(expression: InstanceFieldRef): CodeBlock {
+    val builder = CodeBlock.builder()
+    val callee = buildCodeBlockFromExpression(expression.instance)
+    if (!callee.isEmpty) {
+        builder.add("\$L.", callee)
+    }
+    builder.add("\$L", expression.fieldName)
+    return builder.build()
+}
 
 fun buildStaticMethodCall(expression: StaticMethod): CodeBlock =
     CodeBlock.builder()
@@ -47,13 +68,11 @@ fun buildStaticMethodCall(expression: StaticMethod): CodeBlock =
 
 fun buildInstanceMethodCall(expression: InstanceMethod): CodeBlock {
     val codeBlockBuilder = CodeBlock.builder()
-    if (expression.value is This) {
-        codeBlockBuilder.add("${expression.methodName}(")
-    } else {
-        codeBlockBuilder
-            .add(buildCodeBlockFromExpression(expression.value))
-            .add(".${expression.methodName}(")
+    val callee = buildCodeBlockFromExpression(expression.value)
+    if (!callee.isEmpty) {
+        codeBlockBuilder.add(callee).add(".")
     }
+    codeBlockBuilder.add("${expression.methodName}(")
     codeBlockBuilder
         .add(expression.arguments.stream().map { buildCodeBlockFromExpression(it) }.collect(CodeBlock.joining(", ")))
         .add(")")
@@ -79,4 +98,12 @@ fun buildLambda(expression: Lambda): CodeBlock {
         codeBlockBuilder.add(buildCodeBlockFromExpression(expression.body.first()))
     }
     return codeBlockBuilder.build()
+}
+
+fun buildThis(expression: This): CodeBlock {
+    if (expression.omitThis) {
+        return CodeBlock.of("")
+    } else {
+        return CodeBlock.of("this")
+    }
 }

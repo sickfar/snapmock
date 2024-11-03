@@ -83,7 +83,9 @@ data class InstanceFieldRef(
     override val name: String = "$instance.$fieldName"
 }
 
-class This: NamedRef {
+class This(
+    val omitThis: Boolean = false
+): NamedRef {
     override val name: String = "this"
 }
 

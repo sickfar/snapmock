@@ -6,6 +6,7 @@ import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
 import org.mockito.stubbing.Stubber
 import org.snapmock.generator.lang.common.*
+import java.lang.String
 
 class CodeBuilderKtTest {
 
@@ -17,6 +18,26 @@ class CodeBuilderKtTest {
         )
         val code = buildStaticFieldRef(expression)
         assertEquals("java.lang.System.out", code.toString())
+    }
+
+    @Test
+    fun testInstanceFieldRef() {
+        val expression = InstanceFieldRef(
+            fieldName = "field",
+            instance = This()
+        )
+        val code = buildInstanceFieldRef(expression)
+        assertEquals("this.field", code.toString())
+    }
+
+    @Test
+    fun testInstanceFieldRef_ThisOmit() {
+        val expression = InstanceFieldRef(
+            fieldName = "field",
+            instance = This(true)
+        )
+        val code = buildInstanceFieldRef(expression)
+        assertEquals("field", code.toString())
     }
 
     @Test
@@ -35,7 +56,7 @@ class CodeBuilderKtTest {
         val expression = StaticMethod(
             typeName = Mockito::class.qualifiedName!!,
             methodName = "doReturn",
-            arguments = listOf(Field("fieldName", "int", listOf(), setOf(), init = null))
+            arguments = listOf(FieldRef("fieldName"))
         )
         val code = buildStaticMethodCall(expression)
         assertEquals("org.mockito.Mockito.doReturn(fieldName)", code.toString())
@@ -84,7 +105,7 @@ class CodeBuilderKtTest {
     fun testBuildInstanceMethodCall_This() {
         val expression = InstanceMethod(
             typeName = javaClass.name,
-            value = This(),
+            value = This(true),
             methodName = "someMethod",
             arguments = listOf()
         )
@@ -203,6 +224,54 @@ class CodeBuilderKtTest {
     }
 
     @Test
+    fun testBuildVariableDefinitionFinal_NoInit() {
+        val expression = VariableDefinition(
+            typeName = Integer::class.java.name,
+            name = "test",
+            final = true,
+            init = null
+        )
+        val code = buildVariableDefinition(expression)
+        assertEquals("final int test", code.toString())
+    }
+
+    @Test
+    fun testBuildVariableDefinitionFinal_WithInit() {
+        val expression = VariableDefinition(
+            typeName = "int",
+            name = "test",
+            final = true,
+            init = NumericLiteral(5)
+        )
+        val code = buildVariableDefinition(expression)
+        assertEquals("final var test = 5", code.toString())
+    }
+
+    @Test
+    fun testBuildVariableDefinition_NoInit() {
+        val expression = VariableDefinition(
+            typeName = String::class.java.name,
+            name = "test",
+            final = false,
+            init = null
+        )
+        val code = buildVariableDefinition(expression)
+        assertEquals("java.lang.String test", code.toString())
+    }
+
+    @Test
+    fun testBuildVariableDefinition_WithInit() {
+        val expression = VariableDefinition(
+            typeName = String::class.java.name,
+            name = "test",
+            final = false,
+            init = StringLiteral("Hello World!"),
+        )
+        val code = buildVariableDefinition(expression)
+        assertEquals("var test = \"Hello World!\"", code.toString())
+    }
+
+    @Test
     fun testBuildCodeBlockFromSimpleExpression() {
         val expression = InstanceMethod(
             typeName = "org.snapmock.snap.spring.simple.app.HelloService",
@@ -214,15 +283,7 @@ class CodeBuilderKtTest {
                     arguments = listOf(Variable("variable", "int"))
                 ),
                 methodName = "when",
-                arguments = listOf(
-                    Field(
-                        typeName = "org.snapmock.snap.spring.simple.app.HelloService",
-                        name = "helloService",
-                        annotations = listOf(),
-                        modifiers = setOf(),
-                        init = null,
-                    )
-                )
+                arguments = listOf(FieldRef(name = "helloService"))
             ),
             methodName = "get",
             arguments = listOf(
@@ -234,7 +295,6 @@ class CodeBuilderKtTest {
             )
         )
         val code = buildCodeBlockFromExpression(expression)
-        println(code)
         assertEquals(
             "org.mockito.Mockito.doThrow(variable).when(helloService).get(org.mockito.ArgumentMatchers.eq(\"Hello\"))",
             code.toString()
