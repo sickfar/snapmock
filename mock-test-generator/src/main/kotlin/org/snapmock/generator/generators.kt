@@ -1,5 +1,7 @@
 package org.snapmock.generator
 
+import org.snapmock.core.InvocationSnap
+import org.snapmock.core.Source
 import org.snapmock.generator.data.Assertion
 import org.snapmock.generator.data.Mock
 import org.snapmock.generator.data.SnapMockTest
@@ -9,8 +11,6 @@ import org.snapmock.generator.lang.common.Field
 import org.snapmock.generator.lang.common.JvmAnnotation
 import org.snapmock.generator.lang.java.JavaCodeGenerator
 import org.snapmock.generator.lang.kotlin.KotlinCodeGenerator
-import org.snapmock.snap.core.InvocationSnap
-import org.snapmock.snap.core.Source
 import java.nio.file.Path
 
 fun assertGenerator(assertFramework: AssertFramework, testFramework: TestFramework) = when (assertFramework) {

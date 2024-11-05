@@ -7,6 +7,9 @@ import org.mockito.InjectMocks
 import org.mockito.Mockito
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.stubbing.Stubber
+import org.snapmock.core.InvocationSnap
+import org.snapmock.core.Source
+import org.snapmock.core.TestSupport
 import org.snapmock.generator.MockFrameworkGenerator
 import org.snapmock.generator.TestFramework
 import org.snapmock.generator.data.InvokeMock
@@ -14,9 +17,6 @@ import org.snapmock.generator.data.Mock
 import org.snapmock.generator.data.ThrowMock
 import org.snapmock.generator.lang.common.*
 import org.snapmock.mock.mockito.MockitoTestSupport
-import org.snapmock.snap.core.InvocationSnap
-import org.snapmock.snap.core.Source
-import org.snapmock.snap.core.TestSupport
 import java.nio.file.Path
 
 class MockitoMockGenerator(

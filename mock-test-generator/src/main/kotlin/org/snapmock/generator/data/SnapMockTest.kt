@@ -1,9 +1,9 @@
 package org.snapmock.generator.data
 
+import org.snapmock.core.Source
 import org.snapmock.generator.lang.common.Field
 import org.snapmock.generator.lang.common.JvmAnnotation
 import org.snapmock.generator.lang.common.SyntaxElement
-import org.snapmock.snap.core.Source
 import java.nio.file.Path
 
 interface Mock {

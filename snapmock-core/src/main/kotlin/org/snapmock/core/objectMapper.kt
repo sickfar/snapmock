@@ -1,4 +1,4 @@
-package org.snapmock.snap.core
+package org.snapmock.core
 
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -8,10 +8,31 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.kotlinModule
 
+/**
+ * Customize Jackson ObjectMapper implementing this interface and passing it to [objectMapper] function
+ *
+ * This functional interface implementation will receive ObjectMapper instance with default SnapMock configuration as an argument
+ *
+ * @since 1.0.0
+ * @author Roman Aksenenko
+ */
 fun interface SnapMockObjectMapperCustomizer {
+    /**
+     * Customize ObjectMapper
+     * @param objectMapper ObjectMapper instance with default SnapMock configuration
+     */
     fun customize(objectMapper: ObjectMapper)
 }
 
+/**
+ * Create a Jackson ObjectMapper to serialize and deserialize snapshots
+ * @param customizer ObjectMapper customizer which receives ObjectMapper instance as an argument
+ * @return Configured Jackson ObjectMapper
+ *
+ * @see SnapMockObjectMapperCustomizer
+ * @since 1.0.0
+ * @author Roman Aksenenko
+ */
 fun objectMapper(customizer: SnapMockObjectMapperCustomizer? = null): ObjectMapper {
     val objectMapper = jacksonObjectMapper()
         .configure(SerializationFeature.FAIL_ON_SELF_REFERENCES, false)

@@ -1,4 +1,4 @@
-package org.snapmock.snap.core
+package org.snapmock.core
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import mu.KotlinLogging
@@ -13,11 +13,30 @@ import kotlin.io.path.setPosixFilePermissions
 
 private val log = KotlinLogging.logger {}
 
+/**
+ * Writer to serialize and write a snapshot to a specified output directory
+ * @param directory Output directory to write snapshots
+ * @param objectMapper Configured Jackson ObjectMapper to serialize snapshots
+ *
+ * @see SnapReader
+ * @since 1.0.0
+ * @author Roman Aksenenko
+ */
 class SnapWriter(
+    /**
+     * Output directory to write snapshots
+     */
     private val directory: Path,
+    /**
+     * Configured ObjectMapper to serialize snapshots
+     */
     private val objectMapper: ObjectMapper,
 ) {
 
+    /**
+     * Serialize and write a snapshot
+     * @param snap Snapshot to write
+     */
     fun write(snap: SnapData) {
         val now = Instant.now()
         val nowFormatted = DateTimeFormatter.ISO_INSTANT.format(now)
@@ -59,6 +78,15 @@ class SnapWriter(
 
 }
 
+/**
+ * Get an InputStream from a source
+ * @param source Snapshot source to convert to InputStream
+ * @return Constructed InputStream
+ *
+ * @see Source
+ * @since 1.0.0
+ * @author Roman Aksenenko
+ */
 fun inputStream(source: Source): InputStream {
     return when (source) {
         is StreamSource -> source.streamSupplier.get()
@@ -69,10 +97,23 @@ fun inputStream(source: Source): InputStream {
     }
 }
 
+/**
+ * Reader to read and deserialize snapshots
+ * @param objectMapper Configured Jackson ObjectMapper
+ *
+ * @see SnapWriter
+ * @since 1.0.0
+ * @author Roman Aksenenko
+ */
 class SnapReader(
     private val objectMapper: ObjectMapper,
 ) {
 
+    /**
+     * Read a snapshot from a [Source]
+     * @param source Source to read a snapshot from
+     * @return [SnapFromSource] which contains read source and snapshot
+     */
     fun read(source: Source): SnapFromSource {
         val snap = inputStream(source).use { readStream(it) }
         return SnapFromSource(source, snap)

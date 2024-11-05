@@ -1,15 +1,15 @@
 package org.snapmock.generator.framework.assertion.hamcrest
 
 import org.junit.jupiter.api.Assertions
+import org.snapmock.core.InvocationSnap
+import org.snapmock.core.Source
+import org.snapmock.core.TestSupport
 import org.snapmock.generator.AssertFrameworkGenerator
 import org.snapmock.generator.TestFramework
 import org.snapmock.generator.data.Assertion
 import org.snapmock.generator.data.ResultAssertion
 import org.snapmock.generator.data.ThrowsAssertion
 import org.snapmock.generator.lang.common.*
-import org.snapmock.snap.core.InvocationSnap
-import org.snapmock.snap.core.Source
-import org.snapmock.snap.core.TestSupport
 
 class HamcrestAssertGenerator(
     private val testFramework: TestFramework
@@ -63,7 +63,7 @@ class HamcrestAssertGenerator(
                             arguments = List(invocation.arguments.size) { argIndex ->
                                 StaticMethod(
                                     typeName = TestSupport::class.qualifiedName!!,
-                                    methodName = "mainArg",
+                                    methodName = "subjArg",
                                     arguments = listOf(
                                         FieldRef("source"),
                                         NumericLiteral(argIndex)
@@ -112,7 +112,7 @@ class HamcrestAssertGenerator(
             arguments = List(invocation.arguments.size) { argIndex ->
                 StaticMethod(
                     typeName = TestSupport::class.qualifiedName!!,
-                    methodName = "mainArg",
+                    methodName = "subjArg",
                     arguments = listOf(
                         FieldRef("source"),
                         NumericLiteral(argIndex)
@@ -132,7 +132,7 @@ class HamcrestAssertGenerator(
                 arguments = listOf(
                     StaticMethod(
                         typeName = TestSupport::class.qualifiedName!!,
-                        methodName = "mainResult",
+                        methodName = "subjResult",
                         arguments = listOf(
                             FieldRef("source"),
                         )

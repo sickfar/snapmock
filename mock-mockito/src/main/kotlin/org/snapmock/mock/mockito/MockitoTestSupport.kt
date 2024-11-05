@@ -3,8 +3,8 @@ package org.snapmock.mock.mockito
 import org.mockito.Mockito
 import org.mockito.kotlin.KStubbing
 import org.mockito.kotlin.doReturn
-import org.snapmock.snap.core.Source
-import org.snapmock.snap.core.TestSupport
+import org.snapmock.core.Source
+import org.snapmock.core.TestSupport
 
 object MockitoTestSupport {
 

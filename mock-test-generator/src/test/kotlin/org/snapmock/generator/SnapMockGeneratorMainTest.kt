@@ -2,7 +2,7 @@ package org.snapmock.generator
 
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
-import org.snapmock.snap.core.StreamSource
+import org.snapmock.core.StreamSource
 import java.nio.file.Path
 
 class SnapMockGeneratorMainTest {

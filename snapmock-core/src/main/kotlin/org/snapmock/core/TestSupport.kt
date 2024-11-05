@@ -1,34 +1,65 @@
-package org.snapmock.snap.core
+package org.snapmock.core
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.type.TypeFactory
 
+/**
+ * Method to support using created snapshots in unit tests
+ *
+ * Snapshots are being cached after reading for better performance
+ *
+ * @since 1.0.0
+ * @author Roman Aksenenko
+ */
 object TestSupport {
 
     private val cache: MutableMap<Source, SnapFromSource> = mutableMapOf()
+    private val typeFactory = TypeFactory.defaultInstance()
     private var objectMapperCustomizer: SnapMockObjectMapperCustomizer? = null
     private val objectMapper: ObjectMapper by lazy { objectMapper(objectMapperCustomizer) }
-    private val typeFactory = TypeFactory.defaultInstance()
     private val reader: SnapReader by lazy { SnapReader(objectMapper) }
 
-    @JvmStatic
-    fun snap(source: Source) = cache.computeIfAbsent(source) { reader.read(it) }.snap
-
+    /**
+     * Set static ObjectMapper customizer (for all tests in JVM instance)
+     * @param customizer ObjectMapper customizer
+     *
+     * @see SnapMockObjectMapperCustomizer
+     */
     @JvmStatic
     fun setObjectMapperCustomizer(customizer: SnapMockObjectMapperCustomizer) {
         objectMapperCustomizer = customizer
     }
 
+    /**
+     * Read a snapshot from a source
+     * @param source Source to read a snapshot from
+     * @return Snapshot
+     */
     @JvmStatic
-    fun <T> mainArg(source: Source, argIndex: Int): T? {
+    fun snap(source: Source) = cache.computeIfAbsent(source) { reader.read(it) }.snap
+
+    /**
+     * Read a test subject invocation argument of given index
+     * @param source Source to read a snapshot and subject invocation argument
+     * @param argIndex Index of argument to read
+     * @return Read argument. The type of argument is determined by [InvocationSnap.argumentTypes] or [InvocationSnap.parameterTypes]
+     * (in priority of order)
+     */
+    @JvmStatic
+    fun <T> subjArg(source: Source, argIndex: Int): T? {
         val snap = snap(source).main
         val argumentType = snap.argumentTypes?.get(argIndex) ?: snap.parameterTypes[argIndex]
         val javaType = typeFactory.constructFromCanonical(argumentType)
         return objectMapper.convertValue(snap.arguments[argIndex], javaType)
     }
 
+    /**
+     * Read a test subject invocation result
+     * @param source Source to read a snapshot and subject invocation result
+     * @return Read result. The type of result is determined by [InvocationSnap.returnType]
+     */
     @JvmStatic
-    fun <T> mainResult(source: Source): T? {
+    fun <T> subjResult(source: Source): T? {
         val snap = snap(source).main
         val returnType = snap.returnType
         val javaType = typeFactory.constructFromCanonical(returnType)
@@ -37,13 +68,13 @@ object TestSupport {
 
     @JvmStatic
     @Suppress("UNCHECKED_CAST")
-    fun <T> mainThrClass(source: Source): Class<T> {
+    fun <T> subjThrClass(source: Source): Class<T> {
         val snap = snap(source).main
         return Class.forName(snap.exceptionType) as Class<T>
     }
 
     @JvmStatic
-    fun mainThrMess(source: Source): String? {
+    fun subjThrMess(source: Source): String? {
         val snap = snap(source).main
         return snap.exceptionMessage
     }

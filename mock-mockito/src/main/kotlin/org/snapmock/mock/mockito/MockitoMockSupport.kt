@@ -8,8 +8,8 @@ import org.mockito.Mock
 import org.mockito.kotlin.KStubbing
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.doThrow
-import org.snapmock.snap.core.Source
-import org.snapmock.snap.core.TestSupport
+import org.snapmock.core.Source
+import org.snapmock.core.TestSupport
 import java.util.*
 import java.util.function.BiConsumer
 import java.util.stream.Collectors
@@ -91,7 +91,7 @@ object MockitoMockSupport {
         val parameterTypes = snap.main.parameterTypes.map { Class.forName(it) }.toTypedArray()
         val subjectMethod = subjectClass.getMethod(snap.main.methodName, *parameterTypes)
         val args = List(snap.main.arguments.size) { index ->
-            TestSupport.mainArg<Any>(source, index)
+            TestSupport.subjArg<Any>(source, index)
         }.toTypedArray()
         if (snap.main.exceptionType != null) {
             val exception = assertThrows<Throwable> {
@@ -102,7 +102,7 @@ object MockitoMockSupport {
             }
         } else {
             val expected = if (expectedConverter == null) {
-                TestSupport.mainResult<Any>(source)
+                TestSupport.subjResult<Any>(source)
             } else {
                 expectedConverter.apply(snap.main.result)
             }

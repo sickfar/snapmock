@@ -1,6 +1,6 @@
 package org.snapmock.snap.spring.simple.app
 
-import org.snapmock.snap.core.Snap
+import org.snapmock.core.Snap
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController

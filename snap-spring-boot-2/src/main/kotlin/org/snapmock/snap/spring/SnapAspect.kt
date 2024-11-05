@@ -1,7 +1,5 @@
 package org.snapmock.snap.spring
 
-import com.fasterxml.jackson.databind.JavaType
-import com.fasterxml.jackson.databind.type.TypeFactory
 import mu.KotlinLogging
 import org.aopalliance.intercept.MethodInterceptor
 import org.aopalliance.intercept.MethodInvocation
@@ -10,34 +8,42 @@ import org.aspectj.lang.annotation.Around
 import org.aspectj.lang.annotation.Aspect
 import org.aspectj.lang.annotation.Pointcut
 import org.aspectj.lang.reflect.MethodSignature
-import org.snapmock.snap.core.*
+import org.snapmock.core.InvocationStorage
+import org.snapmock.core.Snap
+import org.snapmock.core.SnapDepFactory
+import org.snapmock.core.SnapWriter
 import org.springframework.aop.framework.ProxyFactory
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 import java.lang.reflect.Constructor
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Modifier
-import java.lang.reflect.Type
+import java.lang.reflect.Parameter
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import java.util.stream.Collectors
 import kotlin.jvm.optionals.getOrNull
 
 private val log = KotlinLogging.logger {}
 
+/**
+ * This aspect processes beans and bean methods annotated [Snap]
+ */
 @Aspect
 @Component
 open class SnapAspect(
     private val writer: SnapWriter,
-    private val storage: InvocationStorage
+    private val storage: InvocationStorage,
+    private val configuration: SnapConfigurationProperties,
 ) {
 
     private val interceptedBeanCache: MutableMap<Class<*>, Any> = ConcurrentHashMap(50)
-    private val typeFactory = TypeFactory.defaultInstance()
 
-    @Pointcut("@annotation(org.snapmock.snap.core.Snap)")
+    @Pointcut("@annotation(org.snapmock.core.Snap)")
     open fun onMethodAnnotatedSnap() {
     }
 
-    @Pointcut("execution(public * *(..)) && within(@org.snapmock.snap.core.Snap *)")
+    @Pointcut("execution(public * *(..)) && within(@org.snapmock.core.Snap *)")
     open fun onAnyMethodOfClassAnnotatedSnap() {
     }
 
@@ -50,62 +56,57 @@ open class SnapAspect(
         try {
             storage.start()
             val result = signature.method.invoke(newTarget, *joinPoint.args)
-            snapInvocation(joinPoint, result)
+            snapInvocation(storage, writer, joinPoint, result)
             storage.stop()
             return result
         } catch (e: Throwable) {
-            snapInvocationException(joinPoint, e)
+            snapInvocationException(storage, writer, joinPoint, e)
             throw e
         }
     }
 
-    private fun buildNewTarget(target: Any, targetClass: Class<*>): Any {
-        val fields = targetClass.declaredFields
-        // so far support only unique beans extraction
-        val fieldValues: MutableMap<Class<*>, Any> = mutableMapOf()
+    private fun buildNewTarget(oldTarget: Any, targetClass: Class<*>): Any {
         try {
-            for (field in fields) {
-                field.trySetAccessible()
-                val type = field.type
-                val value = field[target]
-                fieldValues[type] = value
+            val maxCtor = Arrays.stream(targetClass.declaredConstructors)
+                .filter { ctor: Constructor<*> -> Modifier.isPublic(ctor.modifiers) }
+                .max(Comparator.comparingInt { obj: Constructor<*> -> obj.parameterCount })
+                .getOrNull()
+            if (maxCtor == null) {
+                log.warn { "Cannot create intercepted object ${targetClass.name} because no available constructor found" }
+                return oldTarget
             }
-        } catch (e: IllegalAccessException) {
-            log.warn { "Cannot create intercepted object ${targetClass.name} because cannot access object fields" }
-            return target
-        }
-        val maxCtor = Arrays.stream(targetClass.declaredConstructors)
-            .filter { ctor: Constructor<*> -> Modifier.isPublic(ctor.modifiers) }
-            .max(Comparator.comparingInt { obj: Constructor<*> -> obj.parameterCount })
-            .getOrNull()
-        if (maxCtor == null) {
-            log.warn { "Cannot create intercepted object ${targetClass.name} because no available constructor found" }
-            return target
-        }
-        val parameterTypes = maxCtor.parameterTypes
-        val arguments = arrayOfNulls<Any>(parameterTypes.size)
-        for (i in parameterTypes.indices) {
-            val parameterType = parameterTypes[i]
-            val unwrappedArgument = fieldValues[parameterType]
-            val wrappedArgument = buildDependencySpy(parameterType, unwrappedArgument)
-            check(parameterType.isInstance(wrappedArgument)) { "Argument $i is not instance of ${parameterType.name}" }
-            arguments[i] = wrappedArgument
-        }
-        try {
-            val result = maxCtor.newInstance(*arguments)
+            val parameters = maxCtor.parameters
+            val arguments = buildNewTargetCtorArguments(targetClass, oldTarget, parameters)
+            val newTarget: Any = maxCtor.newInstance(*arguments)
             log.debug { "New target built for bean ${targetClass.name}" }
-            return result
-        } catch (e: Exception) {
-            log.warn {
-                "Cannot create intercepted object ${targetClass.name} because cannot invoke constructor $maxCtor"
+            setNewTargetAutowiredSetters(targetClass, oldTarget, newTarget)
+            log.debug { "Autowired setters have been set for bean ${targetClass.name}" }
+            setNewTargetAutowiredFields(targetClass, oldTarget, newTarget)
+            log.debug { "Autowired fields have been set for bean ${targetClass.name}" }
+            return newTarget
+        } catch (e: InvocationTargetException) {
+            log.warn(e) {
+                "Cannot create intercepted object ${targetClass.name} because cannot invoke method"
             }
-            return target
+            return oldTarget
+        } catch (e: IllegalAccessException) {
+            log.warn { "Cannot create intercepted object ${targetClass.name} because cannot access object members" }
+            return oldTarget
+        } catch (e: IllegalStateException) {
+            log.warn(e) {
+                "Cannot create intercepted object ${targetClass.name} because of failed preconditions"
+            }
+            return oldTarget
         }
     }
 
     private fun buildDependencySpy(parameterType: Class<*>, dependency: Any?): Any? {
         if (dependency == null) {
             return null
+        }
+        if (configuration.ignore.mappedClasses.contains(parameterType)) {
+            log.trace { "Ignored class ${parameterType.name} found, will not proxy" }
+            return dependency
         }
         val proxyFactory = ProxyFactory(dependency)
         proxyFactory.isProxyTargetClass = true
@@ -115,21 +116,22 @@ open class SnapAspect(
             val method = invocation.method
             val args = invocation.arguments
             val isPublic = Modifier.isPublic(invocation.method.modifiers)
-            log.trace { "Dependency method in public: $isPublic" }
+            log.trace { "Dependency method is public: $isPublic" }
             try {
                 val result = method.invoke(dependency, *args)
-                if (method.isAnnotationPresent(SnapDepFactory::class.java)) {
-                    snapFactoryInvocation(parameterType, invocation)
+                if (method.isAnnotationPresent(SnapDepFactory::class.java) ||
+                    (parameterType.isAnnotationPresent(SnapDepFactory::class.java) && isPublic)) {
+                    snapFactoryInvocation(storage, parameterType, invocation)
                     return@MethodInterceptor buildDependencySpy(parameterType, result)
                 } else if (isPublic) {
-                    snapDependencyInvocation(parameterType, invocation, result)
+                    snapDependencyInvocation(storage, parameterType, invocation, result)
                 }
                 return@MethodInterceptor result
             } catch (e: InvocationTargetException) {
                 if (method.isAnnotationPresent(SnapDepFactory::class.java)) {
-                    snapFactoryInvocationException(parameterType, invocation, e)
+                    snapFactoryInvocationException(storage, parameterType, invocation, e)
                 } else if (isPublic) {
-                    snapDependencyInvocationException(parameterType, invocation, e.targetException)
+                    snapDependencyInvocationException(storage, parameterType, invocation, e.targetException)
                 }
                 throw e
             }
@@ -139,161 +141,84 @@ open class SnapAspect(
         return result
     }
 
-    private fun snapDependencyInvocation(dependencyType: Class<*>, invocation: MethodInvocation, result: Any) {
-        log.debug { "Dependency invocation: $invocation" }
-        val method = invocation.method
-        val methodParameters = Arrays.stream(method.genericParameterTypes)
-            .map { type: Type? -> typeFactory.constructType(type) }
-            .map { obj: JavaType -> obj.toCanonical() }
-            .toList()
-        val methodReturnType = typeFactory.constructType(method.genericReturnType)
-        val snap = InvocationSnap(
-            className = dependencyType.name,
-            methodName = method.name,
-            parameterTypes = methodParameters,
-            returnType = methodReturnType.toCanonical(),
-            arguments = listOf(*invocation.arguments),
-            result = result,
-            argumentTypes = null,
-            exceptionType = null,
-            exceptionMessage = null,
-        )
-        storage.record(snap)
+    private fun getOldTargetFieldValues(target: Any, targetClass: Class<*>): Map<Class<*>, Any?> {
+        return Arrays.stream(targetClass.declaredFields)
+            .peek { it.trySetAccessible() }
+            .collect(Collectors.toMap({ it.type }, { it[target] }))
     }
 
-    private fun snapFactoryInvocation(dependencyType: Class<*>, invocation: MethodInvocation) {
-        log.debug { "Dependency factory invocation: $invocation" }
-        val method = invocation.method
-        val methodParameters = Arrays.stream(method.genericParameterTypes)
-            .map { type: Type? -> typeFactory.constructType(type) }
-            .map { obj: JavaType -> obj.toCanonical() }
-            .toList()
-        val methodReturnType = typeFactory.constructType(method.genericReturnType)
-        val snap = FactoryInvocationSnap(
-            className = dependencyType.name,
-            methodName = method.name,
-            parameterTypes = methodParameters,
-            returnType = methodReturnType.toCanonical(),
-            arguments = listOf(*invocation.arguments),
-            argumentTypes = null,
-            exceptionType = null,
-            exceptionMessage = null,
-        )
-        storage.record(snap)
+    private fun buildNewTargetCtorArguments(
+        targetClass: Class<*>,
+        oldTarget: Any,
+        parameters: Array<Parameter>,
+    ): Array<Any?> {
+        val arguments = arrayOfNulls<Any>(parameters.size)
+        if (parameters.all { it.isNamePresent }) {
+            // if we have parameters names then set them from field names (allows type duplicates)
+            for (i in parameters.indices) {
+                val parameterName = parameters[i].name
+                val parameterType = parameters[i].type
+                try {
+                    val correspondingField = targetClass.getDeclaredField(parameterName)
+                    check(parameterType == correspondingField.type) { "For class ${targetClass.name} corresponding field $parameterName is not instance of ${parameterType.name}. Such bean cannot be intercepted to snap" }
+                    correspondingField.trySetAccessible()
+                    val unwrappedArgument = correspondingField.get(oldTarget)
+                    val wrappedArgument = buildDependencySpy(parameterType, unwrappedArgument)
+                    check(parameterType.isInstance(wrappedArgument)) { "For class ${targetClass.name} constructor argument $i is not instance of ${parameterType.name}" }
+                    arguments[i] = wrappedArgument
+                } catch (e: NoSuchFieldException) {
+                    throw IllegalStateException("For class ${targetClass.name} constructor argument $parameterName type ${parameterType.name} is not found in fields. Such bean cannot be intercepted to snap")
+                }
+            }
+        } else {
+            // if no param names then we can only operate types, which does not allow duplicates
+            val fieldValues = getOldTargetFieldValues(oldTarget, targetClass)
+            for (i in parameters.indices) {
+                val parameterType = parameters[i].type
+                check(fieldValues.containsKey(parameterType)) { "For class ${targetClass.name} constructor argument $i of type ${parameterType.name} is not found in fields. Such bean cannot be intercepted to snap" }
+                val unwrappedArgument = fieldValues[parameterType]
+                val wrappedArgument = buildDependencySpy(parameterType, unwrappedArgument)
+                check(parameterType.isInstance(wrappedArgument)) { "For class ${targetClass.name} constructor argument $i is not instance of ${parameterType.name}" }
+                arguments[i] = wrappedArgument
+            }
+        }
+        return arguments
     }
 
-    private fun snapDependencyInvocationException(
-        dependencyType: Class<*>,
-        invocation: MethodInvocation,
-        exception: Throwable
+    private fun setNewTargetAutowiredSetters(
+        targetClass: Class<*>,
+        oldTarget: Any,
+        newTarget: Any
     ) {
-        log.debug { "Dependency invocation exception: $invocation, ${exception.message}" }
-        val method = invocation.method
-        val methodParameters = Arrays.stream(method.genericParameterTypes)
-            .map { type: Type? -> typeFactory.constructType(type) }
-            .map { obj: JavaType -> obj.toCanonical() }
-            .toList()
-        val methodReturnType = typeFactory.constructType(method.genericReturnType)
-        val snap = InvocationSnap(
-            className = dependencyType.name,
-            methodName = method.name,
-            parameterTypes = methodParameters,
-            returnType = methodReturnType.toCanonical(),
-            arguments = listOf(*invocation.arguments),
-            exceptionType = exception.javaClass.name,
-            exceptionMessage = exception.message,
-            argumentTypes = null,
-            result = null,
-        )
-        storage.record(snap)
+        Arrays.stream(targetClass.declaredMethods)
+            .filter { it.isAnnotationPresent(Autowired::class.java) }
+            .filter { it.name.startsWith("set") }
+            .filter { it.parameterCount == 1 }
+            .peek { it.trySetAccessible() }
+            .forEach { method ->
+                val propertyName = method.name.replace("set", "").replaceFirstChar { it.lowercaseChar() }
+                val propertyType = method.parameterTypes[0]
+                try {
+                    val correspondingField = targetClass.getDeclaredField(propertyName)
+                    check(propertyType == correspondingField.type) { "For class ${targetClass.name} corresponding field for property $propertyName is not instance of ${propertyType.name}. Such bean cannot be intercepted to snap" }
+                    correspondingField.trySetAccessible()
+                    val arg = correspondingField[oldTarget]
+                    val wrappedArgument = buildDependencySpy(propertyType, arg)
+                    method.invoke(newTarget, wrappedArgument)
+                } catch (e: NoSuchFieldException) {
+                    throw IllegalStateException("For class ${targetClass.name} property $propertyName of type ${propertyType.name} is not found in fields. Such bean cannot be intercepted to snap")
+                }
+            }
     }
 
-    private fun snapFactoryInvocationException(
-        dependencyType: Class<*>,
-        invocation: MethodInvocation,
-        exception: Throwable
-    ) {
-        log.debug { "Dependency factory invocation exception: $invocation, ${exception.message}" }
-        val method = invocation.method
-        val methodParameters = Arrays.stream(method.genericParameterTypes)
-            .map { type: Type? -> typeFactory.constructType(type) }
-            .map { obj: JavaType -> obj.toCanonical() }
-            .toList()
-        val methodReturnType = typeFactory.constructType(method.genericReturnType)
-        val snap = FactoryInvocationSnap(
-            className = dependencyType.name,
-            methodName = method.name,
-            parameterTypes = methodParameters,
-            returnType = methodReturnType.toCanonical(),
-            arguments = listOf(*invocation.arguments),
-            exceptionType = exception.javaClass.name,
-            exceptionMessage = exception.message,
-            argumentTypes = null
-        )
-        storage.record(snap)
-    }
-
-    private fun snapInvocation(joinPoint: ProceedingJoinPoint, result: Any) {
-        log.debug { "Snapping invocation" }
-        val signature = joinPoint.signature as MethodSignature
-        val method = signature.method
-        val args = joinPoint.args
-        val methodParameters = Arrays.stream(method.genericParameterTypes)
-            .map { type: Type? -> typeFactory.constructType(type) }
-            .map { obj: JavaType -> obj.toCanonical() }
-            .toList()
-        val className = joinPoint.signature.declaringTypeName
-        val methodName = method.name
-        val returnType = typeFactory.constructType(method.genericReturnType)
-        val main = InvocationSnap(
-            className = className,
-            methodName = methodName,
-            parameterTypes = methodParameters,
-            returnType = returnType.toCanonical(),
-            arguments = listOf(*args),
-            result = result,
-            argumentTypes = null,
-            exceptionType = null,
-            exceptionMessage = null,
-        )
-        val snap = SnapData(
-            main = main,
-            dependencies = storage.getDependencyInvocations(),
-            factories = storage.getFactoryInvocations()
-        )
-        writer.write(snap)
-        storage.reset()
-    }
-
-    private fun snapInvocationException(joinPoint: ProceedingJoinPoint, throwable: Throwable) {
-        log.debug { "Snapping invocation exception" }
-        val signature = joinPoint.signature as MethodSignature
-        val method = signature.method
-        val args = joinPoint.args
-        val methodParameters = Arrays.stream(method.genericParameterTypes)
-            .map { type: Type? -> typeFactory.constructType(type) }
-            .map { obj: JavaType -> obj.toCanonical() }
-            .toList()
-        val className = joinPoint.signature.declaringTypeName
-        val methodName = method.name
-        val returnType = typeFactory.constructType(method.genericReturnType)
-        val main = InvocationSnap(
-            className = className,
-            methodName = methodName,
-            parameterTypes = methodParameters,
-            returnType = returnType.toCanonical(),
-            arguments = listOf(*args),
-            exceptionType = throwable.javaClass.name,
-            exceptionMessage = throwable.message,
-            argumentTypes = null,
-            result = null,
-        )
-        val snap = SnapData(
-            main = main,
-            dependencies = storage.getDependencyInvocations(),
-            factories = storage.getFactoryInvocations()
-        )
-        writer.write(snap)
-        storage.reset()
+    private fun setNewTargetAutowiredFields(targetClass: Class<*>, oldTarget: Any, newTarget: Any) {
+        Arrays.stream(targetClass.declaredFields)
+            .filter { it.isAnnotationPresent(Autowired::class.java) }
+            .peek { it.trySetAccessible() }
+            .forEach { field ->
+                val fieldValue = field.get(oldTarget)
+                val wrappedFieldValue = buildDependencySpy(field.type, fieldValue)
+                field.set(newTarget, wrappedFieldValue)
+            }
     }
 }

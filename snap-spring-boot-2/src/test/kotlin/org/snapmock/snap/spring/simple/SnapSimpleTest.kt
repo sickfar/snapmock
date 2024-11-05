@@ -3,8 +3,8 @@ package org.snapmock.snap.spring.simple
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
-import org.snapmock.snap.core.SnapData
-import org.snapmock.snap.core.objectMapper
+import org.snapmock.core.SnapData
+import org.snapmock.core.objectMapper
 import org.snapmock.snap.spring.simple.app.HelloController
 import org.snapmock.snap.spring.simple.app.HelloService
 import org.snapmock.snap.spring.simple.app.SimpleApp

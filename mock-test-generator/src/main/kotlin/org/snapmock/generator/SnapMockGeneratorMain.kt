@@ -8,10 +8,10 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.types.enum
 import com.github.ajalt.clikt.parameters.types.path
-import org.snapmock.snap.core.PathSource
-import org.snapmock.snap.core.SnapReader
-import org.snapmock.snap.core.Source
-import org.snapmock.snap.core.objectMapper
+import org.snapmock.core.PathSource
+import org.snapmock.core.SnapReader
+import org.snapmock.core.Source
+import org.snapmock.core.objectMapper
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.stream.Collectors

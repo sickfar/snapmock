@@ -1,6 +1,10 @@
 package org.snapmock.generator.lang.java
 
 import com.palantir.javapoet.*
+import org.snapmock.core.ClassPathResourceSource
+import org.snapmock.core.Source
+import org.snapmock.core.TestSupport
+import org.snapmock.core.inputStream
 import org.snapmock.generator.CodeGenerator
 import org.snapmock.generator.Mode
 import org.snapmock.generator.data.SnapMockTest
@@ -8,10 +12,6 @@ import org.snapmock.generator.lang.common.ClassAnnotationExpression
 import org.snapmock.generator.lang.common.Field
 import org.snapmock.generator.lang.common.JvmAnnotation
 import org.snapmock.generator.lang.common.StringAnnotationExpression
-import org.snapmock.snap.core.ClassPathResourceSource
-import org.snapmock.snap.core.Source
-import org.snapmock.snap.core.TestSupport
-import org.snapmock.snap.core.inputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import javax.lang.model.element.Modifier

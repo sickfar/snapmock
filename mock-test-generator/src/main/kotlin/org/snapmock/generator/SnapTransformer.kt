@@ -1,7 +1,7 @@
 package org.snapmock.generator
 
+import org.snapmock.core.SnapFromSource
 import org.snapmock.generator.data.SnapMockTest
-import org.snapmock.snap.core.SnapFromSource
 
 class SnapTransformer(
     private val mockFrameworkGenerator: MockFrameworkGenerator,
