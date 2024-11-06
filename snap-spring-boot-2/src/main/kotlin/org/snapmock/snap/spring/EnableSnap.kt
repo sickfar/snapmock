@@ -14,5 +14,5 @@ import org.springframework.context.annotation.Import
 @Configuration
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
-@Import(SnapConfiguration::class)
+@Import(SnapConfiguration::class, SpringDataJpaSnapConfiguration::class)
 annotation class EnableSnap

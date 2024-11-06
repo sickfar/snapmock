@@ -28,6 +28,9 @@ private val log = KotlinLogging.logger {}
 
 /**
  * This aspect processes beans and bean methods annotated [Snap]
+ *
+ * @since 1.0.0
+ * @author Roman Aksenenko
  */
 @Aspect
 @Component

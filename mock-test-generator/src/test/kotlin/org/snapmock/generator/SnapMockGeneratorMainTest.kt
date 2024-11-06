@@ -19,7 +19,7 @@ class SnapMockGeneratorMainTest {
             Mode.PER_SNAP_FILE,
             output,
             listOf(StreamSource {
-                javaClass.getResourceAsStream("/snap/HelloController_get_2024_11_01T20_52_33_762752Z.json")!!
+                javaClass.getResourceAsStream("/snap/HelloService_get_simple.json")!!
             })
         )
     }

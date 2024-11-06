@@ -40,20 +40,20 @@ object MockitoMockSupport {
                     val exception = MockitoTestSupport.depThr(exceptionType, exceptionMessage)
                     KStubbing(mockObject).apply {
                         on {
-                            mockMethod.invoke(this, mapDepArgs(dependency.arguments.size, source, depIndex))
+                            mockMethod.invoke(this, *mapDepArgs(dependency.arguments.size, source, depIndex))
                         } doThrow exception
                     }
                 } else {
                     KStubbing(mockObject).apply {
                         on {
-                            mockMethod.invoke(this, mapDepArgs(dependency.arguments.size, source, depIndex))
+                            mockMethod.invoke(this, *mapDepArgs(dependency.arguments.size, source, depIndex))
                         }.thenThrow(exceptionType)
                     }
                 }
             } else {
                 KStubbing(mockObject).apply {
                     on {
-                        mockMethod.invoke(this, mapDepArgs(dependency.arguments.size, source, depIndex))
+                        mockMethod.invoke(this, *mapDepArgs(dependency.arguments.size, source, depIndex))
                     } doReturn TestSupport.depResult(source, depIndex)
                 }
             }
@@ -87,6 +87,7 @@ object MockitoMockSupport {
             .filter { it.isAnnotationPresent(InjectMocks::class.java) }
             .filter { it.type == subjectClass }
             .peek { it.trySetAccessible() }
+            .map { it.get(test) }
             .findFirst().orElseThrow { IllegalStateException("No field of type ${snap.main.className} annotated @InjectMocks found") }
         val parameterTypes = snap.main.parameterTypes.map { Class.forName(it) }.toTypedArray()
         val subjectMethod = subjectClass.getMethod(snap.main.methodName, *parameterTypes)
@@ -121,19 +122,21 @@ object MockitoMockSupport {
         doSnapshotTest(test, source, null) { expected: Any, actual: Any -> assertEquals(expected, actual) }
     }
 
-    private fun mapDepArgs(size: Int, source: Source, depIndex: Int) {
+    private fun mapDepArgs(size: Int, source: Source, depIndex: Int): Array<Any?> {
         val args = arrayOfNulls<Any>(size)
         for (argIndex in args.indices) {
             val arg = TestSupport.depArg<Any>(source, depIndex, argIndex)
             args[argIndex] = ArgumentMatchers.eq(arg)
         }
+        return args
     }
 
-    private fun mapFactoryArgs(size: Int, source: Source, depIndex: Int) {
+    private fun mapFactoryArgs(size: Int, source: Source, depIndex: Int): Array<Any?> {
         val args = arrayOfNulls<Any>(size)
         for (argIndex in args.indices) {
             val arg = TestSupport.factArg<Any>(source, depIndex, argIndex)
             args[argIndex] = ArgumentMatchers.eq(arg)
         }
+        return args
     }
 }

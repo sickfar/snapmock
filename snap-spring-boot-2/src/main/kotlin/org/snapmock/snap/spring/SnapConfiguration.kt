@@ -46,11 +46,11 @@ open class SnapConfiguration(
 open class SnapConfigurationProperties @ConstructorBinding constructor(
     val enabled: Boolean = false,
     val directory: Path = defaultDirectory(),
-    val ignore: SnapConfigurationPropertiesIgnore
+    val ignore: SnapConfigurationPropertiesIgnore = SnapConfigurationPropertiesIgnore()
 )
 
 open class SnapConfigurationPropertiesIgnore @ConstructorBinding constructor(
-    val classes: List<String> = listOf()
+    val classes: List<String> = defaultIgnoreClasses()
 ) {
     val mappedClasses: List<Class<*>> by lazy {
         return@lazy classes.stream()
