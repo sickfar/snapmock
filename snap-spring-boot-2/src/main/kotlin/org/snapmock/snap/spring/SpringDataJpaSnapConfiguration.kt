@@ -18,12 +18,23 @@ open class SpringDataJpaSnapConfiguration {
         return SnapMockObjectMapperCustomizer {
             val hibernateVersion = Version.getVersionString()
             if (hibernateVersion.startsWith("5")) {
-                it.registerModule(Hibernate5Module())
-            } else if (hibernateVersion.startsWith("5.5") || hibernateVersion.startsWith("5.6")) {
-                it.registerModule(Hibernate5JakartaModule())
+                if (isJakarta()) {
+                    it.registerModule(Hibernate5JakartaModule())
+                } else {
+                    it.registerModule(Hibernate5Module())
+                }
             } else if (hibernateVersion.startsWith("6")) {
                 it.registerModule(Hibernate6Module())
             }
+        }
+    }
+
+    private fun isJakarta(): Boolean {
+        try {
+            Class.forName("jakarta.persistence.Transient", false, javaClass.classLoader)
+            return true
+        } catch (e: ClassNotFoundException) {
+            return false
         }
     }
 

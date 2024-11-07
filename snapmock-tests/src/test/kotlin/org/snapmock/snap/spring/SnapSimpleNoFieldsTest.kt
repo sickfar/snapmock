@@ -6,18 +6,17 @@ import org.assertj.core.api.InstanceOfAssertFactories
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
-import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
-import org.mockito.InjectMocks
-import org.mockito.Mock
-import org.mockito.junit.jupiter.MockitoExtension
 import org.snapmock.core.PathSource
 import org.snapmock.core.SnapData
 import org.snapmock.core.objectMapper
 import org.snapmock.mock.mockito.MockitoMockSupport
 import org.snapmock.snap.spring.simple.SimpleApp
-import org.snapmock.snap.spring.simple.hello.*
+import org.snapmock.snap.spring.simple.hello.HelloDataProvider
+import org.snapmock.snap.spring.simple.hello.HelloFactory
+import org.snapmock.snap.spring.simple.hello.HelloRepository
+import org.snapmock.snap.spring.simple.hello.HelloService
 import org.springframework.boot.SpringApplication
 import org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext
 import org.springframework.util.FileSystemUtils
@@ -32,29 +31,7 @@ import kotlin.jvm.optionals.getOrNull
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
-@ExtendWith(MockitoExtension::class)
-class SnapSimpleTest {
-
-    @Mock
-    lateinit var helloRepository: HelloRepository
-
-    @Mock
-    lateinit var factoryByClass: HelloProviderFactoryByClass
-
-    @Mock
-    lateinit var factoryByMethod: HelloProviderFactoryByMethod
-
-    @Mock
-    lateinit var factoryBySetter: HelloProviderFactoryBySetter
-
-    @Mock
-    lateinit var factoryByField: HelloProviderFactoryByField
-
-    @Mock
-    lateinit var helloDataProvider: HelloDataProvider
-
-    @InjectMocks
-    lateinit var helloService: HelloService
+class SnapSimpleNoFieldsTest {
 
     private val objectMapper = objectMapper(null)
 
@@ -72,8 +49,10 @@ class SnapSimpleTest {
         SpringApplication.exit(context)
         assertEquals(response.statusCode(), 200)
         val file = Files.list(dir)
-            .filter { it.name.startsWith("${HelloService::class.simpleName}")
-                    && it.name.endsWith(".json") }
+            .filter {
+                it.name.startsWith("${HelloService::class.simpleName}")
+                        && it.name.endsWith(".json")
+            }
             .findFirst()
             .getOrNull()
         assertNotNull(file)
@@ -83,11 +62,12 @@ class SnapSimpleTest {
         assertEquals(HelloService::class.qualifiedName, snap.main.className)
         assertEquals("get", snap.main.methodName)
         assertThat(snap.dependencies).hasSize(1)
-        assertThat(snap.dependencies).singleElement().hasFieldOrPropertyWithValue("className", HelloRepository::class.qualifiedName)
+        assertThat(snap.dependencies).singleElement()
+            .hasFieldOrPropertyWithValue("className", HelloRepository::class.qualifiedName)
         assertThat(snap.dependencies).singleElement().hasFieldOrPropertyWithValue("methodName", "getMessage")
 
         assertDoesNotThrow {
-            MockitoMockSupport.doSnapshotTest(this, PathSource(file))
+            MockitoMockSupport.doSnapshotTest(PathSource(file))
         }
         FileSystemUtils.deleteRecursively(dir)
     }
@@ -101,13 +81,16 @@ class SnapSimpleTest {
         val context = application.run() as ServletWebServerApplicationContext
         val port = context.webServer.port
         val httpClient = HttpClient.newHttpClient()
-        val request = HttpRequest.newBuilder().POST(BodyPublishers.ofString("Hello test")).uri(URI.create("http://localhost:$port/")).build()
+        val request = HttpRequest.newBuilder().POST(BodyPublishers.ofString("Hello test"))
+            .uri(URI.create("http://localhost:$port/")).build()
         val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
         SpringApplication.exit(context)
         assertEquals(response.statusCode(), 200)
         val file = Files.list(dir)
-            .filter { it.name.startsWith("${HelloService::class.simpleName}")
-                    && it.name.endsWith(".json") }
+            .filter {
+                it.name.startsWith("${HelloService::class.simpleName}")
+                        && it.name.endsWith(".json")
+            }
             .findFirst()
             .getOrNull()
         assertNotNull(file)
@@ -126,7 +109,7 @@ class SnapSimpleTest {
             .hasFieldOrPropertyWithValue("data", "Hello test")
 
         assertDoesNotThrow {
-            MockitoMockSupport.doSnapshotTest(this, PathSource(file))
+            MockitoMockSupport.doSnapshotTest(PathSource(file))
         }
         FileSystemUtils.deleteRecursively(dir)
     }
@@ -141,14 +124,17 @@ class SnapSimpleTest {
         val context = application.run() as ServletWebServerApplicationContext
         val port = context.webServer.port
         val httpClient = HttpClient.newHttpClient()
-        val request = HttpRequest.newBuilder().GET().uri(URI.create("http://localhost:$port/factory/${factory.name}")).build()
+        val request =
+            HttpRequest.newBuilder().GET().uri(URI.create("http://localhost:$port/factory/${factory.name}")).build()
         val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
         SpringApplication.exit(context)
         assertEquals(response.statusCode(), 200)
         assertThat(response.body()).contains("Hello from $factory")
         val file = Files.list(dir)
-            .filter { it.name.startsWith("${HelloService::class.simpleName}")
-                    && it.name.endsWith(".json") }
+            .filter {
+                it.name.startsWith("${HelloService::class.simpleName}")
+                        && it.name.endsWith(".json")
+            }
             .findFirst()
             .getOrNull()
         assertNotNull(file)
@@ -158,7 +144,10 @@ class SnapSimpleTest {
         assertEquals(HelloService::class.qualifiedName, snap.main.className)
         assertEquals("getByFactory", snap.main.methodName)
         assertThat(snap.factories).hasSize(1).singleElement()
-            .hasFieldOrPropertyWithValue("className", "org.snapmock.snap.spring.simple.hello.HelloProviderFactoryBy" + factory.name.lowercase().replaceFirstChar { it.uppercase() })
+            .hasFieldOrPropertyWithValue(
+                "className",
+                "org.snapmock.snap.spring.simple.hello.HelloProviderFactoryBy" + factory.name.lowercase()
+                    .replaceFirstChar { it.uppercase() })
         assertThat(snap.factories).singleElement()
             .hasFieldOrPropertyWithValue("methodName", "getProvider")
         assertThat(snap.dependencies).hasSize(1).singleElement()
@@ -167,10 +156,7 @@ class SnapSimpleTest {
             .hasFieldOrPropertyWithValue("methodName", "getGreeting")
 
         assertDoesNotThrow {
-            // mockito does not inject setters and fields
-            helloService.factoryBySetter = factoryBySetter
-            helloService.factoryByField = factoryByField
-            MockitoMockSupport.doSnapshotTest(this, PathSource(file))
+            MockitoMockSupport.doSnapshotTest(PathSource(file))
         }
         FileSystemUtils.deleteRecursively(dir)
     }

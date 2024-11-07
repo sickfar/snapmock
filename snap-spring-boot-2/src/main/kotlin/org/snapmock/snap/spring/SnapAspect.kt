@@ -15,10 +15,7 @@ import org.snapmock.core.SnapWriter
 import org.springframework.aop.framework.ProxyFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
-import java.lang.reflect.Constructor
-import java.lang.reflect.InvocationTargetException
-import java.lang.reflect.Modifier
-import java.lang.reflect.Parameter
+import java.lang.reflect.*
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.stream.Collectors
@@ -103,7 +100,7 @@ open class SnapAspect(
         }
     }
 
-    private fun buildDependencySpy(parameterType: Class<*>, dependency: Any?): Any? {
+    private fun buildDependencySpy(parameterType: Class<*>, dependency: Any?, isFactoryByFieldOrCtorArg: Boolean): Any? {
         if (dependency == null) {
             return null
         }
@@ -123,9 +120,9 @@ open class SnapAspect(
             try {
                 val result = method.invoke(dependency, *args)
                 if (method.isAnnotationPresent(SnapDepFactory::class.java) ||
-                    (parameterType.isAnnotationPresent(SnapDepFactory::class.java) && isPublic)) {
+                    ((parameterType.isAnnotationPresent(SnapDepFactory::class.java) || isFactoryByFieldOrCtorArg) && isPublic)) {
                     snapFactoryInvocation(storage, parameterType, invocation)
-                    return@MethodInterceptor buildDependencySpy(parameterType, result)
+                    return@MethodInterceptor buildDependencySpy(method.returnType, result, false)
                 } else if (isPublic) {
                     snapDependencyInvocation(storage, parameterType, invocation, result)
                 }
@@ -144,10 +141,10 @@ open class SnapAspect(
         return result
     }
 
-    private fun getOldTargetFieldValues(target: Any, targetClass: Class<*>): Map<Class<*>, Any?> {
+    private fun getOldTargetFieldValues(target: Any, targetClass: Class<*>): Map<Class<*>, Pair<Field, Any?>> {
         return Arrays.stream(targetClass.declaredFields)
             .peek { it.trySetAccessible() }
-            .collect(Collectors.toMap({ it.type }, { it[target] }))
+            .collect(Collectors.toMap({ it.type }, { it to it[target] }))
     }
 
     private fun buildNewTargetCtorArguments(
@@ -166,7 +163,8 @@ open class SnapAspect(
                     check(parameterType == correspondingField.type) { "For class ${targetClass.name} corresponding field $parameterName is not instance of ${parameterType.name}. Such bean cannot be intercepted to snap" }
                     correspondingField.trySetAccessible()
                     val unwrappedArgument = correspondingField.get(oldTarget)
-                    val wrappedArgument = buildDependencySpy(parameterType, unwrappedArgument)
+                    val isFactoryAnnotationPresent = correspondingField.isAnnotationPresent(SnapDepFactory::class.java) || parameters[i].isAnnotationPresent(SnapDepFactory::class.java)
+                    val wrappedArgument = buildDependencySpy(parameterType, unwrappedArgument, isFactoryAnnotationPresent)
                     check(parameterType.isInstance(wrappedArgument)) { "For class ${targetClass.name} constructor argument $i is not instance of ${parameterType.name}" }
                     arguments[i] = wrappedArgument
                 } catch (e: NoSuchFieldException) {
@@ -179,8 +177,10 @@ open class SnapAspect(
             for (i in parameters.indices) {
                 val parameterType = parameters[i].type
                 check(fieldValues.containsKey(parameterType)) { "For class ${targetClass.name} constructor argument $i of type ${parameterType.name} is not found in fields. Such bean cannot be intercepted to snap" }
-                val unwrappedArgument = fieldValues[parameterType]
-                val wrappedArgument = buildDependencySpy(parameterType, unwrappedArgument)
+                val fieldAndArgument = fieldValues[parameterType]!!
+                val unwrappedArgument = fieldAndArgument.second
+                val isFactoryAnnotationPresent = fieldAndArgument.first.isAnnotationPresent(SnapDepFactory::class.java) || parameters[i].isAnnotationPresent(SnapDepFactory::class.java)
+                val wrappedArgument = buildDependencySpy(parameterType, unwrappedArgument, isFactoryAnnotationPresent)
                 check(parameterType.isInstance(wrappedArgument)) { "For class ${targetClass.name} constructor argument $i is not instance of ${parameterType.name}" }
                 arguments[i] = wrappedArgument
             }
@@ -206,7 +206,8 @@ open class SnapAspect(
                     check(propertyType == correspondingField.type) { "For class ${targetClass.name} corresponding field for property $propertyName is not instance of ${propertyType.name}. Such bean cannot be intercepted to snap" }
                     correspondingField.trySetAccessible()
                     val arg = correspondingField[oldTarget]
-                    val wrappedArgument = buildDependencySpy(propertyType, arg)
+                    val isFactoryAnnotationPresent = correspondingField.isAnnotationPresent(SnapDepFactory::class.java) || method.isAnnotationPresent(SnapDepFactory::class.java)
+                    val wrappedArgument = buildDependencySpy(propertyType, arg, isFactoryAnnotationPresent)
                     method.invoke(newTarget, wrappedArgument)
                 } catch (e: NoSuchFieldException) {
                     throw IllegalStateException("For class ${targetClass.name} property $propertyName of type ${propertyType.name} is not found in fields. Such bean cannot be intercepted to snap")
@@ -220,7 +221,8 @@ open class SnapAspect(
             .peek { it.trySetAccessible() }
             .forEach { field ->
                 val fieldValue = field.get(oldTarget)
-                val wrappedFieldValue = buildDependencySpy(field.type, fieldValue)
+                val isFactoryAnnotationPresent = field.isAnnotationPresent(SnapDepFactory::class.java)
+                val wrappedFieldValue = buildDependencySpy(field.type, fieldValue, isFactoryAnnotationPresent)
                 field.set(newTarget, wrappedFieldValue)
             }
     }

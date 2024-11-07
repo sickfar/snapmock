@@ -2,6 +2,7 @@ package org.snapmock.core
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.type.TypeFactory
+import java.util.logging.Logger
 
 /**
  * Method to support using created snapshots in unit tests
@@ -12,6 +13,8 @@ import com.fasterxml.jackson.databind.type.TypeFactory
  * @author Roman Aksenenko
  */
 object TestSupport {
+
+    private val log = Logger.getLogger("TestSupport")
 
     private val cache: MutableMap<Source, SnapFromSource> = mutableMapOf()
     private val typeFactory = TypeFactory.defaultInstance()
@@ -36,7 +39,8 @@ object TestSupport {
      * @return Snapshot
      */
     @JvmStatic
-    fun snap(source: Source) = cache.computeIfAbsent(source) { reader.read(it) }.snap
+    fun snap(source: Source) =
+        cache.computeIfAbsent(source) { s -> reader.read(s).also { log.fine { "Snap read from ${s.name}" } } }.snap
 
     /**
      * Read a test subject invocation argument of given index
@@ -50,6 +54,7 @@ object TestSupport {
         val snap = snap(source).main
         val argumentType = snap.argumentTypes?.get(argIndex) ?: snap.parameterTypes[argIndex]
         val javaType = typeFactory.constructFromCanonical(argumentType)
+        log.fine { "Reading subject invocation argument $argIndex of type $argumentType from source ${source.name}" }
         return objectMapper.convertValue(snap.arguments[argIndex], javaType)
     }
 
@@ -63,18 +68,21 @@ object TestSupport {
         val snap = snap(source).main
         val returnType = snap.returnType
         val javaType = typeFactory.constructFromCanonical(returnType)
+        log.fine { "Reading subject invocation result of type $returnType from source ${source.name}" }
         return objectMapper.convertValue(snap.result, javaType)
     }
 
     @JvmStatic
     @Suppress("UNCHECKED_CAST")
     fun <T> subjThrClass(source: Source): Class<T> {
+        log.fine { "Reading subject invocation thrown class from source ${source.name}" }
         val snap = snap(source).main
         return Class.forName(snap.exceptionType) as Class<T>
     }
 
     @JvmStatic
     fun subjThrMess(source: Source): String? {
+        log.fine { "Reading subject invocation thrown message from source ${source.name}" }
         val snap = snap(source).main
         return snap.exceptionMessage
     }
@@ -84,6 +92,7 @@ object TestSupport {
         val snap = snap(source).dependencies[depIndex]
         val argumentType = snap.argumentTypes?.get(argIndex) ?: snap.parameterTypes[argIndex]
         val javaType = typeFactory.constructFromCanonical(argumentType)
+        log.fine { "Reading dependency $depIndex invocation argument $argIndex of type $javaType from source ${source.name}" }
         return objectMapper.convertValue(snap.arguments[argIndex], javaType)
     }
 
@@ -92,6 +101,7 @@ object TestSupport {
         val snap = snap(source).factories[depIndex]
         val argumentType = snap.argumentTypes?.get(argIndex) ?: snap.parameterTypes[argIndex]
         val javaType = typeFactory.constructFromCanonical(argumentType)
+        log.fine { "Reading dependency $depIndex factory invocation argument $argIndex of type $javaType from source ${source.name}" }
         return objectMapper.convertValue(snap.arguments[argIndex], javaType)
     }
 
@@ -100,6 +110,7 @@ object TestSupport {
         val snap = snap(source).dependencies[depIndex]
         val returnType = snap.returnType
         val javaType = typeFactory.constructFromCanonical(returnType)
+        log.fine { "Reading dependency $depIndex invocation result of type $javaType from source ${source.name}" }
         return objectMapper.convertValue(snap.result, javaType)
     }
 
@@ -107,12 +118,14 @@ object TestSupport {
     @Suppress("UNCHECKED_CAST")
     fun <T> depThrClass(source: Source, depIndex: Int): Class<T> {
         val snap = snap(source).dependencies[depIndex]
+        log.fine { "Reading dependency $depIndex invocation thrown exception class from source ${source.name}" }
         return Class.forName(snap.exceptionType) as Class<T>
     }
 
     @JvmStatic
     fun depThrMess(source: Source, depIndex: Int): String? {
         val snap = snap(source).dependencies[depIndex]
+        log.fine { "Reading dependency $depIndex invocation thrown exception message from source ${source.name}" }
         return snap.exceptionMessage
     }
 

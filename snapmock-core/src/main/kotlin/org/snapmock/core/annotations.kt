@@ -17,6 +17,12 @@ annotation class Snap
  * @since 1.0.0
  * @author Roman Aksenenko
  */
-@Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION)
+@Target(
+    AnnotationTarget.CLASS,
+    AnnotationTarget.FUNCTION,
+    AnnotationTarget.PROPERTY_GETTER,
+    AnnotationTarget.PROPERTY_SETTER,
+    AnnotationTarget.FIELD
+)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class SnapDepFactory

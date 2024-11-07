@@ -1,10 +1,7 @@
 package org.snapmock.snap.spring.simple.hello
 
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 
 @RestController(value = "/hello")
 class HelloController(
@@ -19,6 +16,11 @@ class HelloController(
     @PostMapping("/")
     fun post(@RequestBody data: String): ResponseEntity<HelloData> {
         return ResponseEntity.ok(service.post(data))
+    }
+
+    @GetMapping("/factory/{factory}")
+    fun getByFactory(@PathVariable("factory") factory: HelloFactory): ResponseEntity<HelloData> {
+        return ResponseEntity.ok(service.getByFactory(factory))
     }
 
 }
