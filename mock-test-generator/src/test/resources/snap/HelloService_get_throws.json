@@ -5,12 +5,10 @@
     "parameterTypes": [],
     "arguments": [],
     "argumentTypes": null,
-    "returnType": "org.snapmock.snap.spring.simple.app.HelloData",
-    "result": {
-      "data": "Hello World"
-    },
-    "exceptionType": null,
-    "exceptionMessage": null
+    "returnType": "org.snapmock.snap.spring.simple.hello.HelloData",
+    "result": null,
+    "exceptionType": "java.lang.IllegalStateException",
+    "exceptionMessage": "IllegalState"
   },
   "dependencies": {
     "repository": "org.snapmock.snap.spring.simple.hello.HelloRepository"
@@ -23,9 +21,9 @@
       "arguments": [],
       "argumentTypes": null,
       "returnType": "java.lang.String",
-      "result": "Hello World",
-      "exceptionType": null,
-      "exceptionMessage": null
+      "result": null,
+      "exceptionType": "java.lang.IllegalStateException",
+      "exceptionMessage": "IllegalState"
     }
   ],
   "factories": []

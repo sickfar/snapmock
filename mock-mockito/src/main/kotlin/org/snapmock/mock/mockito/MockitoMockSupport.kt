@@ -23,10 +23,6 @@ fun interface AssertionBiConsumer<E, A> : BiConsumer<E, A> {
     override fun accept(expected: E, actual: A)
 }
 
-enum class MissingMockInjectionMode {
-    NULL, MOCK
-}
-
 object MockitoMockSupport {
 
     private val log = Logger.getLogger("MockitoMockSupport")
@@ -51,21 +47,40 @@ object MockitoMockSupport {
     @JvmStatic
     fun configureMocks(source: Source): Map<Class<*>, Any> {
         val snap = TestSupport.snap(source)
-        val mockObjects: MutableMap<Class<*>, Any> = mutableMapOf()
+        val mockObjects: MutableMap<Class<*>, Any> = snap.dependencies.map {
+            val aClass = Class.forName(it.value)
+            aClass to Mockito.mock(aClass)
+        }.toMap().toMutableMap()
         log.fine { "No test class passed. Mocks will be created dynamically" }
         configureMocks0(mockObjects, snap, source)
         return mockObjects
     }
 
+    // TODO consider changing computeIfAbsent to avoid side effects
     @Suppress("UNCHECKED_CAST")
     private fun configureMocks0(
         mockObjects: MutableMap<Class<*>, Any>,
         snap: SnapData,
         source: Source
     ) {
-        snap.dependencies.forEachIndexed { depIndex, dependency ->
+        snap.factories.forEachIndexed { depIndex, factory ->
+            val dependencyClass = Class.forName(factory.className)
+            // we add factory produced dependency
+            val mockObject = mockObjects[dependencyClass]
+            checkNotNull(mockObject) { "Mock object for class ${dependencyClass.name} is not found" }
+            val parameterTypes = factory.parameterTypes.map { Class.forName(it) }.toTypedArray()
+            val mockMethod = dependencyClass.getMethod(factory.methodName, *parameterTypes)
+            val resultClass = Class.forName(factory.returnType)
+            KStubbing(mockObject).apply {
+                on {
+                    mockMethod.invoke(this, *mapFactoryArgs(factory.arguments.size, source, depIndex))
+                } doReturn mockObjects.computeIfAbsent(resultClass) { Mockito.mock(resultClass) }
+            }
+        }
+        snap.dependents.forEachIndexed { depIndex, dependency ->
             val dependencyClass = Class.forName(dependency.className)
-            val mockObject = mockObjects.computeIfAbsent(dependencyClass) { Mockito.mock(dependencyClass) }
+            val mockObject = mockObjects[dependencyClass]
+            checkNotNull(mockObject) { "Mock object for class ${dependencyClass.name} is not found" }
             val parameterTypes = dependency.parameterTypes.map { Class.forName(it) }.toTypedArray()
             val mockMethod = dependencyClass.getMethod(dependency.methodName, *parameterTypes)
             if (dependency.exceptionType != null) {
@@ -93,18 +108,6 @@ object MockitoMockSupport {
                 }
             }
         }
-        snap.factories.forEachIndexed { depIndex, factory ->
-            val dependencyClass = Class.forName(factory.className)
-            val mockObject = mockObjects.computeIfAbsent(dependencyClass) { Mockito.mock(dependencyClass) }
-            val parameterTypes = factory.parameterTypes.map { Class.forName(it) }.toTypedArray()
-            val mockMethod = dependencyClass.getMethod(factory.methodName, *parameterTypes)
-            val resultClass = Class.forName(factory.returnType)
-            KStubbing(mockObject).apply {
-                on {
-                    mockMethod.invoke(this, *mapFactoryArgs(factory.arguments.size, source, depIndex))
-                } doReturn mockObjects.computeIfAbsent(resultClass) { Mockito.mock(resultClass) }
-            }
-        }
     }
 
     @JvmStatic
@@ -122,21 +125,21 @@ object MockitoMockSupport {
             .filter { it.type == subjectClass }
             .peek { it.trySetAccessible() }
             .map { it.get(test) }
-            .findFirst().orElseThrow { IllegalStateException("No field of type ${snap.main.className} annotated @InjectMocks found") }
+            .findFirst()
+            .orElseThrow { IllegalStateException("No field of type ${snap.main.className} annotated @InjectMocks found") }
         doSnapshotTest0(snap, subjectClass, source, subject, expectedConverter, asserts)
     }
 
     @JvmStatic
     fun <E, A> doSnapshotTest(
         source: Source,
-        missingMockInjectionMode: MissingMockInjectionMode = MissingMockInjectionMode.MOCK,
         expectedConverter: Function<Any?, E>?,
         asserts: AssertionBiConsumer<E, A>
     ) {
         val snap = TestSupport.snap(source)
         val mocks = configureMocks(source)
         val subjectClass = Class.forName(snap.main.className)
-        val subject = buildSubject(subjectClass, mocks, missingMockInjectionMode)
+        val subject = buildSubject(subjectClass, mocks)
         doSnapshotTest0(snap, subjectClass, source, subject, expectedConverter, asserts)
     }
 
@@ -183,13 +186,23 @@ object MockitoMockSupport {
     }
 
     @JvmStatic
-    fun <E, A> doSnapshotTest(source: Source, missingMockInjectionMode: MissingMockInjectionMode = MissingMockInjectionMode.MOCK, asserts: AssertionBiConsumer<E, A>) {
-        doSnapshotTest(source, missingMockInjectionMode,null, asserts)
+    fun <E, A> doSnapshotTest(
+        source: Source,
+        asserts: AssertionBiConsumer<E, A>
+    ) {
+        doSnapshotTest(source, null, asserts)
     }
 
     @JvmStatic
-    fun doSnapshotTest(source: Source, missingMockInjectionMode: MissingMockInjectionMode = MissingMockInjectionMode.MOCK) {
-        doSnapshotTest(source, missingMockInjectionMode, null) { expected: Any, actual: Any -> assertEquals(expected, actual) }
+    fun doSnapshotTest(
+        source: Source
+    ) {
+        doSnapshotTest(source, null) { expected: Any, actual: Any ->
+            assertEquals(
+                expected,
+                actual
+            )
+        }
     }
 
     private fun mapDepArgs(size: Int, source: Source, depIndex: Int): Array<Any?> {
@@ -212,8 +225,7 @@ object MockitoMockSupport {
 
     private fun buildSubject(
         subjectClass: Class<*>,
-        dependencies: Map<Class<*>, Any>,
-        missingMockInjectionMode: MissingMockInjectionMode
+        dependencies: Map<Class<*>, Any>
     ): Any {
         val classes = dependencies.keys
         val ctor = Arrays.stream(subjectClass.declaredConstructors)
@@ -239,14 +251,8 @@ object MockitoMockSupport {
                 )
             }
         val arguments = arrayOfNulls<Any>(ctor.parameterCount)
-        ctor.parameterTypes.forEachIndexed{ i, parameterType ->
-            if (dependencies.containsKey(parameterType)) {
-                arguments[i] = dependencies[parameterType]
-            } else {
-                if (missingMockInjectionMode == MissingMockInjectionMode.MOCK) {
-                    arguments[i] = Mockito.mock(parameterType)
-                } // else null is already there
-            }
+        ctor.parameterTypes.forEachIndexed { i, parameterType ->
+            arguments[i] = dependencies[parameterType]
         }
         ctor.trySetAccessible()
         val subject = ctor.newInstance(*arguments)
@@ -262,7 +268,7 @@ object MockitoMockSupport {
                 }, {
                     Arrays.stream(subjectClass.declaredMethods)
                         .filter { it.name.startsWith("set") }
-                        .filter { it.parameterCount == 1}
+                        .filter { it.parameterCount == 1 }
                         .filter { it.parameterTypes[0] == type }
                         .findFirst()
                         .ifPresent {

@@ -13,7 +13,7 @@
         <module>mock-mockito</module>
         <module>snapmock-core</module>
         <module>mock-test-generator</module>
-        <module>snapmock-tests</module>
+        <module>snapmock-spring-boot-2-tests</module>
     </modules>
 
     <properties>

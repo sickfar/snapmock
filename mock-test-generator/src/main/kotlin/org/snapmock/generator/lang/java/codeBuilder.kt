@@ -8,7 +8,7 @@ fun buildCodeBlockFromExpression(expression: SyntaxElement): CodeBlock {
     return when (expression) {
         is NumericLiteral -> CodeBlock.of("${expression.value}")
         is StringLiteral -> CodeBlock.of("\"${expression.value}\"")
-        is ClassRef -> CodeBlock.of("\$T.class", expression.name)
+        is ClassRef -> CodeBlock.of("\$T.class", ClassName.bestGuess(expression.name))
         is VariableDefinition -> buildVariableDefinition(expression)
         is StaticFieldRef -> buildStaticFieldRef(expression)
         is InstanceFieldRef -> buildInstanceFieldRef(expression)
@@ -68,7 +68,7 @@ fun buildStaticMethodCall(expression: StaticMethod): CodeBlock =
 
 fun buildInstanceMethodCall(expression: InstanceMethod): CodeBlock {
     val codeBlockBuilder = CodeBlock.builder()
-    val callee = buildCodeBlockFromExpression(expression.value)
+    val callee = buildCodeBlockFromExpression(expression.instance)
     if (!callee.isEmpty) {
         codeBlockBuilder.add(callee).add(".")
     }

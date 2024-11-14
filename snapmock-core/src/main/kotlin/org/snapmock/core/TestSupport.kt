@@ -89,7 +89,7 @@ object TestSupport {
 
     @JvmStatic
     fun <T> depArg(source: Source, depIndex: Int, argIndex: Int): T? {
-        val snap = snap(source).dependencies[depIndex]
+        val snap = snap(source).dependents[depIndex]
         val argumentType = snap.argumentTypes?.get(argIndex) ?: snap.parameterTypes[argIndex]
         val javaType = typeFactory.constructFromCanonical(argumentType)
         log.fine { "Reading dependency $depIndex invocation argument $argIndex of type $javaType from source ${source.name}" }
@@ -107,7 +107,7 @@ object TestSupport {
 
     @JvmStatic
     fun <T> depResult(source: Source, depIndex: Int): T? {
-        val snap = snap(source).dependencies[depIndex]
+        val snap = snap(source).dependents[depIndex]
         val returnType = snap.returnType
         val javaType = typeFactory.constructFromCanonical(returnType)
         log.fine { "Reading dependency $depIndex invocation result of type $javaType from source ${source.name}" }
@@ -117,14 +117,14 @@ object TestSupport {
     @JvmStatic
     @Suppress("UNCHECKED_CAST")
     fun <T> depThrClass(source: Source, depIndex: Int): Class<T> {
-        val snap = snap(source).dependencies[depIndex]
+        val snap = snap(source).dependents[depIndex]
         log.fine { "Reading dependency $depIndex invocation thrown exception class from source ${source.name}" }
         return Class.forName(snap.exceptionType) as Class<T>
     }
 
     @JvmStatic
     fun depThrMess(source: Source, depIndex: Int): String? {
-        val snap = snap(source).dependencies[depIndex]
+        val snap = snap(source).dependents[depIndex]
         log.fine { "Reading dependency $depIndex invocation thrown exception message from source ${source.name}" }
         return snap.exceptionMessage
     }

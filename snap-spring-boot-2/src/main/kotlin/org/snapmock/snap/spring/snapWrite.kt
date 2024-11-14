@@ -122,6 +122,7 @@ internal fun snapFactoryInvocationException(
 internal fun snapInvocation(
     storage: InvocationStorage,
     writer: SnapWriter,
+    dependencies: Map<String, String>,
     joinPoint: ProceedingJoinPoint,
     result: Any
 ) {
@@ -149,7 +150,8 @@ internal fun snapInvocation(
     )
     val snap = SnapData(
         main = main,
-        dependencies = storage.getDependencyInvocations(),
+        dependencies = dependencies,
+        dependents = storage.getDependencyInvocations(),
         factories = storage.getFactoryInvocations()
     )
     writer.write(snap)
@@ -159,6 +161,7 @@ internal fun snapInvocation(
 internal fun snapInvocationException(
     storage: InvocationStorage,
     writer: SnapWriter,
+    dependencies: MutableMap<String, String>,
     joinPoint: ProceedingJoinPoint,
     throwable: Throwable
 ) {
@@ -186,7 +189,8 @@ internal fun snapInvocationException(
     )
     val snap = SnapData(
         main = main,
-        dependencies = storage.getDependencyInvocations(),
+        dependencies = dependencies,
+        dependents = storage.getDependencyInvocations(),
         factories = storage.getFactoryInvocations()
     )
     writer.write(snap)

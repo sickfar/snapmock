@@ -24,4 +24,21 @@ class SnapMockGeneratorMainTest {
         )
     }
 
+    @Disabled
+    @Test
+    fun testProcessJUnitMockitoHamcrestJavaPerFileWithThrows() {
+        val output = Path.of("./.gen/")
+        process(
+            MockFramework.MOCKITO,
+            TestFramework.JUNIT,
+            AssertFramework.HAMCREST,
+            Lang.JAVA,
+            Mode.PER_SNAP_FILE,
+            output,
+            listOf(StreamSource {
+                javaClass.getResourceAsStream("/snap/HelloService_get_throws.json")!!
+            })
+        )
+    }
+
 }

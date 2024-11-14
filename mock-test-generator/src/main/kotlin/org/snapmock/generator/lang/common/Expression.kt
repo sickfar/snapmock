@@ -12,7 +12,7 @@ data class StaticMethod(
 
 data class InstanceMethod(
     val typeName: String,
-    val value: SyntaxElement,
+    val instance: SyntaxElement,
     val methodName: String,
     val arguments: List<SyntaxElement>,
 ): Invokable

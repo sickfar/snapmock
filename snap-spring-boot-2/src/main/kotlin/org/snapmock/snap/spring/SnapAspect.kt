@@ -52,20 +52,21 @@ open class SnapAspect(
         val signature = joinPoint.signature as MethodSignature
         val target = joinPoint.target
         val targetClass = target.javaClass
-        val newTarget = interceptedBeanCache.computeIfAbsent(targetClass) { buildNewTarget(target, targetClass) }
+        val dependencies = mutableMapOf<String, String>()
+        val newTarget = interceptedBeanCache.computeIfAbsent(targetClass) { buildNewTarget(target, targetClass, dependencies) }
         try {
             storage.start()
             val result = signature.method.invoke(newTarget, *joinPoint.args)
-            snapInvocation(storage, writer, joinPoint, result)
+            snapInvocation(storage, writer, dependencies, joinPoint, result)
             storage.stop()
             return result
         } catch (e: Throwable) {
-            snapInvocationException(storage, writer, joinPoint, e)
+            snapInvocationException(storage, writer, dependencies, joinPoint, e)
             throw e
         }
     }
 
-    private fun buildNewTarget(oldTarget: Any, targetClass: Class<*>): Any {
+    private fun buildNewTarget(oldTarget: Any, targetClass: Class<*>, dependencies: MutableMap<String, String>): Any {
         try {
             val maxCtor = Arrays.stream(targetClass.declaredConstructors)
                 .filter { ctor: Constructor<*> -> Modifier.isPublic(ctor.modifiers) }
@@ -78,10 +79,17 @@ open class SnapAspect(
             val parameters = maxCtor.parameters
             val arguments = buildNewTargetCtorArguments(targetClass, oldTarget, parameters)
             val newTarget: Any = maxCtor.newInstance(*arguments)
+            parameters.forEachIndexed { i, p ->
+                if (p.isNamePresent) {
+                    dependencies[p.name] = p.type.name
+                } else {
+                    dependencies[i.toString()] = p.type.name
+                }
+            }
             log.debug { "New target built for bean ${targetClass.name}" }
-            setNewTargetAutowiredSetters(targetClass, oldTarget, newTarget)
+            setNewTargetAutowiredSetters(targetClass, oldTarget, newTarget, dependencies)
             log.debug { "Autowired setters have been set for bean ${targetClass.name}" }
-            setNewTargetAutowiredFields(targetClass, oldTarget, newTarget)
+            setNewTargetAutowiredFields(targetClass, oldTarget, newTarget, dependencies)
             log.debug { "Autowired fields have been set for bean ${targetClass.name}" }
             return newTarget
         } catch (e: InvocationTargetException) {
@@ -191,7 +199,8 @@ open class SnapAspect(
     private fun setNewTargetAutowiredSetters(
         targetClass: Class<*>,
         oldTarget: Any,
-        newTarget: Any
+        newTarget: Any,
+        dependencies: MutableMap<String, String>
     ) {
         Arrays.stream(targetClass.declaredMethods)
             .filter { it.isAnnotationPresent(Autowired::class.java) }
@@ -209,13 +218,19 @@ open class SnapAspect(
                     val isFactoryAnnotationPresent = correspondingField.isAnnotationPresent(SnapDepFactory::class.java) || method.isAnnotationPresent(SnapDepFactory::class.java)
                     val wrappedArgument = buildDependencySpy(propertyType, arg, isFactoryAnnotationPresent)
                     method.invoke(newTarget, wrappedArgument)
+                    dependencies[propertyName] = propertyType.name
                 } catch (e: NoSuchFieldException) {
                     throw IllegalStateException("For class ${targetClass.name} property $propertyName of type ${propertyType.name} is not found in fields. Such bean cannot be intercepted to snap")
                 }
             }
     }
 
-    private fun setNewTargetAutowiredFields(targetClass: Class<*>, oldTarget: Any, newTarget: Any) {
+    private fun setNewTargetAutowiredFields(
+        targetClass: Class<*>,
+        oldTarget: Any,
+        newTarget: Any,
+        dependencies: MutableMap<String, String>
+    ) {
         Arrays.stream(targetClass.declaredFields)
             .filter { it.isAnnotationPresent(Autowired::class.java) }
             .peek { it.trySetAccessible() }
@@ -224,6 +239,7 @@ open class SnapAspect(
                 val isFactoryAnnotationPresent = field.isAnnotationPresent(SnapDepFactory::class.java)
                 val wrappedFieldValue = buildDependencySpy(field.type, fieldValue, isFactoryAnnotationPresent)
                 field.set(newTarget, wrappedFieldValue)
+                dependencies[field.name] = field.type.name
             }
     }
 }

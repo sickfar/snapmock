@@ -58,7 +58,7 @@ class HamcrestAssertGenerator(
                     body = listOf(
                         InstanceMethod(
                             typeName = invocation.className,
-                            value = FieldRef("subject"),
+                            instance = FieldRef("subject"),
                             methodName = invocation.methodName,
                             arguments = List(invocation.arguments.size) { argIndex ->
                                 StaticMethod(
@@ -91,12 +91,14 @@ class HamcrestAssertGenerator(
                     methodName = "assertEquals",
                     arguments = listOf(
                         StringLiteral(exceptionMessage),
-                        InstanceFieldRef(
-                            fieldName = "message",
+                        InstanceMethod(
+                            typeName = exceptionType,
                             instance = Variable(
                                 typeName = exceptionType,
                                 name = "exception",
-                            )
+                            ),
+                            methodName = "getMessage",
+                            arguments = listOf()
                         )
                     )
                 )
@@ -107,7 +109,7 @@ class HamcrestAssertGenerator(
     private fun generateAssertResultExpression(invocation: InvocationSnap): List<SyntaxElement> {
         val subjectCall = InstanceMethod(
             typeName = invocation.className,
-            value = FieldRef("subject"),
+            instance = FieldRef("subject"),
             methodName = invocation.methodName,
             arguments = List(invocation.arguments.size) { argIndex ->
                 StaticMethod(

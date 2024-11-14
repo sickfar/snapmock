@@ -105,7 +105,7 @@ class CodeBuilderKtTest {
     fun testBuildInstanceMethodCall_This() {
         val expression = InstanceMethod(
             typeName = javaClass.name,
-            value = This(true),
+            instance = This(true),
             methodName = "someMethod",
             arguments = listOf()
         )
@@ -117,7 +117,7 @@ class CodeBuilderKtTest {
     fun testBuildInstanceMethodCall_StaticField() {
         val expression = InstanceMethod(
             typeName = javaClass.name,
-            value = StaticFieldRef(
+            instance = StaticFieldRef(
                 fieldName = "out",
                 typeName = System::class.qualifiedName!!,
             ),
@@ -135,7 +135,7 @@ class CodeBuilderKtTest {
             body = listOf(
                 InstanceMethod(
                     typeName = javaClass.name,
-                    value = StaticFieldRef(
+                    instance = StaticFieldRef(
                         fieldName = "out",
                         typeName = System::class.qualifiedName!!,
                     ),
@@ -155,7 +155,7 @@ class CodeBuilderKtTest {
             body = listOf(
                 InstanceMethod(
                     typeName = javaClass.name,
-                    value = StaticFieldRef(
+                    instance = StaticFieldRef(
                         fieldName = "out",
                         typeName = System::class.qualifiedName!!,
                     ),
@@ -175,7 +175,7 @@ class CodeBuilderKtTest {
             body = listOf(
                 InstanceMethod(
                     typeName = javaClass.name,
-                    value = StaticFieldRef(
+                    instance = StaticFieldRef(
                         fieldName = "out",
                         typeName = System::class.qualifiedName!!,
                     ),
@@ -195,7 +195,7 @@ class CodeBuilderKtTest {
             body = listOf(
                 InstanceMethod(
                     typeName = javaClass.name,
-                    value = StaticFieldRef(
+                    instance = StaticFieldRef(
                         fieldName = "out",
                         typeName = System::class.qualifiedName!!,
                     ),
@@ -204,7 +204,7 @@ class CodeBuilderKtTest {
                 ),
                 InstanceMethod(
                     typeName = javaClass.name,
-                    value = StaticFieldRef(
+                    instance = StaticFieldRef(
                         fieldName = "out",
                         typeName = System::class.qualifiedName!!,
                     ),
@@ -275,9 +275,9 @@ class CodeBuilderKtTest {
     fun testBuildCodeBlockFromSimpleExpression() {
         val expression = InstanceMethod(
             typeName = "org.snapmock.snap.spring.simple.app.HelloService",
-            value = InstanceMethod(
+            instance = InstanceMethod(
                 typeName = Stubber::class.qualifiedName!!,
-                value = StaticMethod(
+                instance = StaticMethod(
                     typeName = Mockito::class.qualifiedName!!,
                     methodName = "doThrow",
                     arguments = listOf(Variable("variable", "int"))

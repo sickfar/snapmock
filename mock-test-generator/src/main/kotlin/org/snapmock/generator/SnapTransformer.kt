@@ -14,8 +14,9 @@ class SnapTransformer(
         val testClassAnnotations = mockFrameworkGenerator.generateTestClassAnnotations() + assertFrameworkGenerator.generateTestClassAnnotations()
         val testMethodAnnotations = mockFrameworkGenerator.generateTestMethodAnnotations() + assertFrameworkGenerator.generateTestMethodAttributes()
         val subject = mockFrameworkGenerator.generateSubject(snap.main, source)
-        val dependencies = snap.dependencies.mapIndexed { index, it -> mockFrameworkGenerator.generateMockingDependency(it, source, index) }.toSet()
-        val mocks = snap.dependencies.mapIndexed { index, depSnap -> mockFrameworkGenerator.generateMock(depSnap, source, index) }
+        val dependencies = snap.dependencies.map { mockFrameworkGenerator.generateMockingDependencyDeclaration(source, it.key, it.value) }.toSet()
+        // TODO generate factories
+        val mocks = snap.dependents.mapIndexed { index, depSnap -> mockFrameworkGenerator.generateMock(depSnap, source, index) }
         val assertion = assertFrameworkGenerator.generateAssertions(snap.main, source)
         return SnapMockTest(
             source = source,

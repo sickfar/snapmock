@@ -39,7 +39,8 @@ data class FactoryInvocationSnap(
  * Representation of a full snapshot, taken from a main method annotated with [Snap]
  * @param main Snapshot of an invocation of method annotated with [Snap]
  * or a public method of class annotated with [Snap]
- * @param dependencies Snapshots of invocation of dependencies (members) of a class annotated with [Snap]
+ * @param dependencies Members which main bean depends on
+ * @param dependents Snapshots of invocation of dependencies (members) of a class annotated with [Snap]
  * or a class which contains method annotated with [Snap]
  * @param factories Recordings of invocations of dependencies (members) of a class annotated with [Snap]
  * or a class which contains method annotated with [Snap] which are factory beans
@@ -54,10 +55,14 @@ data class SnapData(
      */
     val main: InvocationSnap,
     /**
+     * Members which main bean depends on
+     */
+    val dependencies: Map<String, String>,
+    /**
      * Snapshots of invocation of dependencies (members) of a class annotated with [Snap]
      * or a class which contains method annotated with [Snap]
      */
-    val dependencies: List<InvocationSnap>,
+    val dependents: List<InvocationSnap>,
     /**
      * Recordings of invocations of dependencies (members) of a class annotated with [Snap]
      * or a class which contains method annotated with [Snap] which are factory beans

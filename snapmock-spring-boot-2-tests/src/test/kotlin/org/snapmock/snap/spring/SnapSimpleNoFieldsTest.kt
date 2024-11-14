@@ -61,10 +61,10 @@ class SnapSimpleNoFieldsTest {
         }
         assertEquals(HelloService::class.qualifiedName, snap.main.className)
         assertEquals("get", snap.main.methodName)
-        assertThat(snap.dependencies).hasSize(1)
-        assertThat(snap.dependencies).singleElement()
+        assertThat(snap.dependents).hasSize(1)
+        assertThat(snap.dependents).singleElement()
             .hasFieldOrPropertyWithValue("className", HelloRepository::class.qualifiedName)
-        assertThat(snap.dependencies).singleElement().hasFieldOrPropertyWithValue("methodName", "getMessage")
+        assertThat(snap.dependents).singleElement().hasFieldOrPropertyWithValue("methodName", "getMessage")
 
         assertDoesNotThrow {
             MockitoMockSupport.doSnapshotTest(PathSource(file))
@@ -99,13 +99,13 @@ class SnapSimpleNoFieldsTest {
         }
         assertEquals(HelloService::class.qualifiedName, snap.main.className)
         assertEquals("post", snap.main.methodName)
-        assertThat(snap.dependencies).hasSize(1).singleElement()
+        assertThat(snap.dependents).hasSize(1).singleElement()
             .hasFieldOrPropertyWithValue("className", HelloRepository::class.qualifiedName)
             .hasFieldOrPropertyWithValue("methodName", "post")
-        assertThat(snap.dependencies).singleElement().extracting("arguments", `as`(InstanceOfAssertFactories.LIST))
+        assertThat(snap.dependents).singleElement().extracting("arguments", `as`(InstanceOfAssertFactories.LIST))
             .hasSize(1).singleElement()
             .isEqualTo("Hello test")
-        assertThat(snap.dependencies).singleElement().extracting("result")
+        assertThat(snap.dependents).singleElement().extracting("result")
             .hasFieldOrPropertyWithValue("data", "Hello test")
 
         assertDoesNotThrow {
@@ -150,9 +150,9 @@ class SnapSimpleNoFieldsTest {
                     .replaceFirstChar { it.uppercase() })
         assertThat(snap.factories).singleElement()
             .hasFieldOrPropertyWithValue("methodName", "getProvider")
-        assertThat(snap.dependencies).hasSize(1).singleElement()
+        assertThat(snap.dependents).hasSize(1).singleElement()
             .hasFieldOrPropertyWithValue("className", HelloDataProvider::class.qualifiedName)
-        assertThat(snap.dependencies).hasSize(1).singleElement()
+        assertThat(snap.dependents).hasSize(1).singleElement()
             .hasFieldOrPropertyWithValue("methodName", "getGreeting")
 
         assertDoesNotThrow {

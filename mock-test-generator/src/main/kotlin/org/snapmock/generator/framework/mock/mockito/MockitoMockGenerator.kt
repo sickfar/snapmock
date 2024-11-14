@@ -60,11 +60,17 @@ class MockitoMockGenerator(
         )
     }
 
-    override fun generateMockingDependency(invocation: InvocationSnap, source: Source, depIndex: Int): Field {
+    override fun generateMockingDependency(invocation: InvocationSnap, source: Source, depIndex: Int): FieldRef {
+        return FieldRef(
+            name = invocation.className.substringAfterLast(".").replaceFirstChar { it.lowercase() },
+        )
+    }
+
+    override fun generateMockingDependencyDeclaration(source: Source, name: String, className: String): Field {
         return Field(
             annotations = listOf(JvmAnnotation(org.mockito.Mock::class.qualifiedName!!)),
-            typeName = invocation.className,
-            name = invocation.className.substringAfterLast(".").replaceFirstChar { it.lowercase() },
+            typeName = className,
+            name = className.substringAfterLast(".").replaceFirstChar { it.lowercase() },
             modifiers = setOf(),
             init = null
         )
@@ -94,9 +100,9 @@ class MockitoMockGenerator(
         if (invocation.exceptionType != null) {
             val expression = InstanceMethod(
                 typeName = invocation.className,
-                value = InstanceMethod(
+                instance = InstanceMethod(
                     typeName = Stubber::class.qualifiedName!!,
-                    value = StaticMethod(
+                    instance = StaticMethod(
                         typeName = Mockito::class.qualifiedName!!,
                         methodName = "doThrow",
                         arguments = listOf(
@@ -129,9 +135,9 @@ class MockitoMockGenerator(
         } else {
             val expression = InstanceMethod(
                 typeName = invocation.className,
-                value = InstanceMethod(
+                instance = InstanceMethod(
                     typeName = Stubber::class.qualifiedName!!,
-                    value = StaticMethod(
+                    instance = StaticMethod(
                         typeName = Mockito::class.qualifiedName!!,
                         methodName = "doReturn",
                         arguments = listOf(

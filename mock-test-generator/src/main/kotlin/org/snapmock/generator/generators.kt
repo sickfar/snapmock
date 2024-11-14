@@ -8,6 +8,7 @@ import org.snapmock.generator.data.SnapMockTest
 import org.snapmock.generator.framework.assertion.hamcrest.HamcrestAssertGenerator
 import org.snapmock.generator.framework.mock.mockito.MockitoMockGenerator
 import org.snapmock.generator.lang.common.Field
+import org.snapmock.generator.lang.common.FieldRef
 import org.snapmock.generator.lang.common.JvmAnnotation
 import org.snapmock.generator.lang.java.JavaCodeGenerator
 import org.snapmock.generator.lang.kotlin.KotlinCodeGenerator
@@ -42,7 +43,9 @@ interface MockFrameworkGenerator {
 
     fun generateSubject(invocation: InvocationSnap, source: Source): Field
 
-    fun generateMockingDependency(invocation: InvocationSnap, source: Source, depIndex: Int): Field
+    fun generateMockingDependencyDeclaration(source: Source, name: String, className: String): Field
+
+    fun generateMockingDependency(invocation: InvocationSnap, source: Source, depIndex: Int): FieldRef
 
     fun generateMock(invocation: InvocationSnap, source: Source, depIndex: Int): Mock
 
