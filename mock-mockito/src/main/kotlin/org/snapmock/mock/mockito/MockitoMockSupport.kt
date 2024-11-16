@@ -1,5 +1,7 @@
 package org.snapmock.mock.mockito
 
+import io.github.oshai.kotlinlogging.KotlinLogging
+import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.assertThrows
 import org.mockito.ArgumentMatchers
@@ -16,16 +18,15 @@ import java.lang.reflect.Constructor
 import java.util.*
 import java.util.function.BiConsumer
 import java.util.function.Function
-import java.util.logging.Logger
 import java.util.stream.Collectors
+
+private val log = KotlinLogging.logger {}
 
 fun interface AssertionBiConsumer<E, A> : BiConsumer<E, A> {
     override fun accept(expected: E, actual: A)
 }
 
 object MockitoMockSupport {
-
-    private val log = Logger.getLogger("MockitoMockSupport")
 
     @JvmStatic
     fun configureMocks(test: Any, source: Source) {
@@ -40,7 +41,7 @@ object MockitoMockSupport {
                     { k, _ -> throw IllegalStateException("Multiple fields of same type found: ${k.javaClass.name}") },
                     { mutableMapOf() })
             )
-        log.fine { "Collected ${mockObjects.size} mocks from test class" }
+        log.debug { "Collected ${mockObjects.size} mocks from test class" }
         configureMocks0(mockObjects, snap, source)
     }
 
@@ -51,19 +52,20 @@ object MockitoMockSupport {
             val aClass = Class.forName(it.value)
             aClass to Mockito.mock(aClass)
         }.toMap().toMutableMap()
-        log.fine { "No test class passed. Mocks will be created dynamically" }
+        log.debug { "No test class passed. Mocks will be created dynamically" }
         configureMocks0(mockObjects, snap, source)
         return mockObjects
     }
 
-    // TODO consider changing computeIfAbsent to avoid side effects
     @Suppress("UNCHECKED_CAST")
     private fun configureMocks0(
         mockObjects: MutableMap<Class<*>, Any>,
         snap: SnapData,
         source: Source
     ) {
+        log.info { "Configuring mocks for source ${source.name}" }
         snap.factories.forEachIndexed { depIndex, factory ->
+            log.trace { "Mocking factory invocation #$depIndex for factory $factory" }
             val dependencyClass = Class.forName(factory.className)
             // we add factory produced dependency
             val mockObject = mockObjects[dependencyClass]
@@ -76,14 +78,17 @@ object MockitoMockSupport {
                     mockMethod.invoke(this, *mapFactoryArgs(factory.arguments.size, source, depIndex))
                 } doReturn mockObjects.computeIfAbsent(resultClass) { Mockito.mock(resultClass) }
             }
+            log.info { "Stubbed dependency factory ${factory.className}" }
         }
         snap.dependents.forEachIndexed { depIndex, dependency ->
+            log.trace { "Mocking dependency invocation #$depIndex for dependency $dependency" }
             val dependencyClass = Class.forName(dependency.className)
             val mockObject = mockObjects[dependencyClass]
             checkNotNull(mockObject) { "Mock object for class ${dependencyClass.name} is not found" }
             val parameterTypes = dependency.parameterTypes.map { Class.forName(it) }.toTypedArray()
             val mockMethod = dependencyClass.getMethod(dependency.methodName, *parameterTypes)
             if (dependency.exceptionType != null) {
+                log.trace { "Mocking exception flow" }
                 val exceptionType: Class<Throwable> = Class.forName(dependency.exceptionType) as Class<Throwable>
                 val exceptionMessage = dependency.exceptionMessage
                 if (exceptionMessage != null) {
@@ -100,12 +105,15 @@ object MockitoMockSupport {
                         }.thenThrow(exceptionType)
                     }
                 }
+                log.info { "Stubbed dependency invocation ${dependency.className} to throw ${dependency.exceptionType}" }
             } else {
+                log.trace { "Mocking return flow" }
                 KStubbing(mockObject).apply {
                     on {
                         mockMethod.invoke(this, *mapDepArgs(dependency.arguments.size, source, depIndex))
                     } doReturn TestSupport.depResult(source, depIndex)
                 }
+                log.info { "Stubbed dependency invocation ${dependency.className} #$depIndex to return result from ${source.name}" }
             }
         }
     }
@@ -117,6 +125,7 @@ object MockitoMockSupport {
         expectedConverter: Function<Any?, E>?,
         asserts: AssertionBiConsumer<E, A>
     ) {
+        log.info { "Performing snapshot test for class ${test.javaClass.name} from source ${source.name}" }
         val snap = TestSupport.snap(source)
         configureMocks(test, source)
         val subjectClass = Class.forName(snap.main.className)
@@ -127,6 +136,7 @@ object MockitoMockSupport {
             .map { it.get(test) }
             .findFirst()
             .orElseThrow { IllegalStateException("No field of type ${snap.main.className} annotated @InjectMocks found") }
+        log.debug { "Test subject found in class fields: $subject" }
         doSnapshotTest0(snap, subjectClass, source, subject, expectedConverter, asserts)
     }
 
@@ -136,10 +146,12 @@ object MockitoMockSupport {
         expectedConverter: Function<Any?, E>?,
         asserts: AssertionBiConsumer<E, A>
     ) {
+        log.info { "Performing snapshot test from source ${source.name}" }
         val snap = TestSupport.snap(source)
         val mocks = configureMocks(source)
         val subjectClass = Class.forName(snap.main.className)
         val subject = buildSubject(subjectClass, mocks)
+        log.debug { "Test subject built from mocks: $subject" }
         doSnapshotTest0(snap, subjectClass, source, subject, expectedConverter, asserts)
     }
 
@@ -157,7 +169,9 @@ object MockitoMockSupport {
         val args = List(snap.main.arguments.size) { index ->
             TestSupport.subjArg<Any>(source, index)
         }.toTypedArray()
+        log.trace { "Subject invocation arguments built: " + args.contentDeepToString() }
         if (snap.main.exceptionType != null) {
+            log.trace { "Expecting exception flow" }
             val exception = assertThrows<Throwable> {
                 subjectMethod.invoke(subject, *args)
             }
@@ -165,6 +179,7 @@ object MockitoMockSupport {
                 assertEquals(snap.main.exceptionMessage, exception.message)
             }
         } else {
+            log.trace { "Expecting value flow" }
             val expected = if (expectedConverter == null) {
                 TestSupport.subjResult<Any>(source)
             } else {
@@ -198,26 +213,31 @@ object MockitoMockSupport {
         source: Source
     ) {
         doSnapshotTest(source, null) { expected: Any, actual: Any ->
-            assertEquals(
-                expected,
-                actual
-            )
+            if (actual is Array<*>) {
+                assertArrayEquals(expected as Array<*>, actual)
+            } else {
+                assertEquals(expected, actual)
+            }
         }
     }
 
     private fun mapDepArgs(size: Int, source: Source, depIndex: Int): Array<Any?> {
+        log.trace { "Mapping dependency arguments for dependency #$depIndex from source ${source.name}" }
         val args = arrayOfNulls<Any>(size)
         for (argIndex in args.indices) {
             val arg = TestSupport.depArg<Any>(source, depIndex, argIndex)
+            log.trace { "Mapped dependency argument #$argIndex for dependency #$depIndex from source ${source.name}: $arg" }
             args[argIndex] = ArgumentMatchers.eq(arg)
         }
         return args
     }
 
     private fun mapFactoryArgs(size: Int, source: Source, depIndex: Int): Array<Any?> {
+        log.trace { "Mapping dependency arguments for factory #$depIndex from source ${source.name}" }
         val args = arrayOfNulls<Any>(size)
         for (argIndex in args.indices) {
             val arg = TestSupport.factArg<Any>(source, depIndex, argIndex)
+            log.trace { "Mapped factory argument #$argIndex for dependency #$depIndex from source ${source.name}: $arg" }
             args[argIndex] = ArgumentMatchers.eq(arg)
         }
         return args
@@ -227,6 +247,7 @@ object MockitoMockSupport {
         subjectClass: Class<*>,
         dependencies: Map<Class<*>, Any>
     ): Any {
+        log.debug { "Building test subject from class ${subjectClass.name}" }
         val classes = dependencies.keys
         val ctor = Arrays.stream(subjectClass.declaredConstructors)
             // longest constructor first
@@ -236,7 +257,7 @@ object MockitoMockSupport {
             .filter { classes.containsAll(it.parameterTypes.toSet()) }
             .findFirst()
             .or {
-                log.fine { "No fully matching constructor found. Will try to find constructor which contains as much dependencies as possible and mock extra arguments" }
+                log.debug { "No fully matching constructor found. Will try to find constructor which contains as much dependencies as possible and mock extra arguments" }
                 Arrays.stream(subjectClass.declaredConstructors)
                     .sorted(Comparator.comparingInt { ctor -> classes.count { it in ctor.parameterTypes } })
                     .findFirst()
@@ -250,30 +271,48 @@ object MockitoMockSupport {
                     }"""
                 )
             }
+        log.trace { "Found applicable constructor with max number of arguments, based on dependencies: $ctor" }
         val arguments = arrayOfNulls<Any>(ctor.parameterCount)
         ctor.parameterTypes.forEachIndexed { i, parameterType ->
             arguments[i] = dependencies[parameterType]
         }
         ctor.trySetAccessible()
+        log.trace { "Invoking constructor with arguments " + arguments.contentDeepToString() }
         val subject = ctor.newInstance(*arguments)
+        log.debug { "New subject instance created" }
         val notUsedDependencies = dependencies.filter { !ctor.parameterTypes.contains(it.key) }
-        notUsedDependencies.forEach { type, dep ->
+        log.trace { "Processing dependencies that have not been used in constructor" }
+        notUsedDependencies.forEach { (type, dep) ->
             Arrays.stream(subjectClass.declaredFields)
                 .filter { it.type == type }
                 .findFirst()
                 .ifPresentOrElse({
-                    // found
                     it.trySetAccessible()
-                    it[subject] = dep
+                    if (it[subject] == null) {
+                        log.trace { "Setting unset field ${it.name} to value $dep" }
+                        it[subject] = dep
+                    }
                 }, {
-                    Arrays.stream(subjectClass.declaredMethods)
+                    Arrays.stream(subjectClass.methods)
                         .filter { it.name.startsWith("set") }
                         .filter { it.parameterCount == 1 }
                         .filter { it.parameterTypes[0] == type }
                         .findFirst()
                         .ifPresent {
-                            it.trySetAccessible()
-                            it.invoke(subject, dep)
+                            val getterName = it.name.replace("set", "get")
+                            try {
+                                val getter = subjectClass.getMethod(getterName)
+                                if (getter.invoke(subject) == null) {
+                                    log.trace { "Setting unset property with setter ${it.name} to value $dep" }
+                                    it.trySetAccessible()
+                                    it.invoke(subject, dep)
+                                }
+                            } catch (e: NoSuchMethodException) {
+                                // set anyway if no getter
+                                log.trace { "Setting write-only property with setter ${it.name} to value $dep" }
+                                it.trySetAccessible()
+                                it.invoke(subject, dep)
+                            }
                         }
                 })
         }

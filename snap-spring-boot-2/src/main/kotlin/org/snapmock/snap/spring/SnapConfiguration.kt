@@ -1,10 +1,7 @@
 package org.snapmock.snap.spring
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import org.snapmock.core.InvocationStorage
-import org.snapmock.core.SnapMockObjectMapperCustomizer
-import org.snapmock.core.SnapWriter
-import org.snapmock.core.objectMapper
+import org.snapmock.core.*
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.ConstructorBinding
@@ -15,6 +12,19 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy
 import org.springframework.context.annotation.Import
 import java.nio.file.Path
 import java.util.stream.Collectors
+
+/**
+ * Enable support for taking snapshots of
+ * beans and bean methods annotated [Snap] [@Snap]
+ *
+ * @since 1.0.0
+ * @see Snap
+ */
+@Configuration
+@Target(AnnotationTarget.CLASS)
+@Retention(AnnotationRetention.RUNTIME)
+@Import(SnapConfiguration::class, SpringDataJpaSnapConfiguration::class)
+annotation class EnableSnap
 
 @Configuration
 @EnableConfigurationProperties(SnapConfigurationProperties::class)

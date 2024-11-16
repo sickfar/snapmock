@@ -19,12 +19,24 @@ open class SpringDataJpaSnapConfiguration {
             val hibernateVersion = Version.getVersionString()
             if (hibernateVersion.startsWith("5")) {
                 if (isJakarta()) {
-                    it.registerModule(Hibernate5JakartaModule())
+                    val module = Hibernate5JakartaModule()
+                    module.enable(Hibernate5JakartaModule.Feature.FORCE_LAZY_LOADING)
+                    module.enable(Hibernate5JakartaModule.Feature.REPLACE_PERSISTENT_COLLECTIONS)
+                    module.enable(Hibernate5JakartaModule.Feature.WRITE_MISSING_ENTITIES_AS_NULL)
+                    it.registerModule(module)
                 } else {
-                    it.registerModule(Hibernate5Module())
+                    val module = Hibernate5Module()
+                    module.enable(Hibernate5Module.Feature.FORCE_LAZY_LOADING)
+                    module.enable(Hibernate5Module.Feature.REPLACE_PERSISTENT_COLLECTIONS)
+                    module.enable(Hibernate5Module.Feature.WRITE_MISSING_ENTITIES_AS_NULL)
+                    it.registerModule(module)
                 }
             } else if (hibernateVersion.startsWith("6")) {
-                it.registerModule(Hibernate6Module())
+                val module = Hibernate6Module()
+                module.enable(Hibernate6Module.Feature.FORCE_LAZY_LOADING)
+                module.enable(Hibernate6Module.Feature.REPLACE_PERSISTENT_COLLECTIONS)
+                module.enable(Hibernate6Module.Feature.WRITE_MISSING_ENTITIES_AS_NULL)
+                it.registerModule(module)
             }
         }
     }

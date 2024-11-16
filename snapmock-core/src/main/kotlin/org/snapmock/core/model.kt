@@ -13,6 +13,7 @@ data class InvocationSnap(
     val arguments: List<Any>,
     val argumentTypes: List<String?>?,
     val returnType: String,
+    val resultType: String?,
     val result: Any?,
     val exceptionType: String?,
     val exceptionMessage: String?,

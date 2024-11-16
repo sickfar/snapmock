@@ -1,7 +1,7 @@
 package org.snapmock.core
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.Path

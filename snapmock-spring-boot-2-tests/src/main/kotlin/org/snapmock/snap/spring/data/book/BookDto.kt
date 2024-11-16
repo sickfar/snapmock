@@ -6,7 +6,7 @@ import org.snapmock.snap.spring.data.author.toDto
 data class BookDto(
     val id: Int?,
     val title: String,
-    val author: AuthorDto,
+    val author: List<AuthorDto>,
 )
 
 data class BookDtoShort(
@@ -17,5 +17,5 @@ data class BookDtoShort(
 fun BookEntity.toDto(): BookDto = BookDto(
     id = id,
     title = title,
-    author = author.toDto()
+    author = authors.map { it.toDto() },
 )

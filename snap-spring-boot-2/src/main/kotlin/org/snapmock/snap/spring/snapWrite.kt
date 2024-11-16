@@ -2,7 +2,7 @@ package org.snapmock.snap.spring
 
 import com.fasterxml.jackson.databind.JavaType
 import com.fasterxml.jackson.databind.type.TypeFactory
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.aopalliance.intercept.MethodInvocation
 import org.aspectj.lang.ProceedingJoinPoint
 import org.aspectj.lang.reflect.MethodSignature
@@ -26,15 +26,17 @@ internal fun snapDependencyInvocation(
         .map { type: Type? -> typeFactory.constructType(type) }
         .map { obj: JavaType -> obj.toCanonical() }
         .toList()
+    // actual method return type
     val methodReturnType = typeFactory.constructType(method.genericReturnType)
     val snap = InvocationSnap(
         className = dependencyType.name,
         methodName = method.name,
         parameterTypes = methodParameters,
-        returnType = methodReturnType.toCanonical(),
+        argumentTypes = invocation.arguments.map { getCanonicalTypeFromObject(it) },
         arguments = listOf(*invocation.arguments),
+        returnType = methodReturnType.toCanonical(),
+        resultType = getCanonicalTypeFromObject(result),
         result = result,
-        argumentTypes = null,
         exceptionType = null,
         exceptionMessage = null,
     )
@@ -57,9 +59,9 @@ internal fun snapFactoryInvocation(
         className = dependencyType.name,
         methodName = method.name,
         parameterTypes = methodParameters,
-        returnType = methodReturnType.toCanonical(),
+        argumentTypes = invocation.arguments.map { getCanonicalTypeFromObject(it) },
         arguments = listOf(*invocation.arguments),
-        argumentTypes = null,
+        returnType = methodReturnType.toCanonical(),
         exceptionType = null,
         exceptionMessage = null,
     )
@@ -83,11 +85,12 @@ internal fun snapDependencyInvocationException(
         className = dependencyType.name,
         methodName = method.name,
         parameterTypes = methodParameters,
-        returnType = methodReturnType.toCanonical(),
+        argumentTypes = invocation.arguments.map { getCanonicalTypeFromObject(it) },
         arguments = listOf(*invocation.arguments),
+        returnType = methodReturnType.toCanonical(),
         exceptionType = exception.javaClass.name,
         exceptionMessage = exception.message,
-        argumentTypes = null,
+        resultType = null,
         result = null,
     )
     storage.record(snap)
@@ -110,11 +113,11 @@ internal fun snapFactoryInvocationException(
         className = dependencyType.name,
         methodName = method.name,
         parameterTypes = methodParameters,
-        returnType = methodReturnType.toCanonical(),
+        argumentTypes = invocation.arguments.map { getCanonicalTypeFromObject(it) },
         arguments = listOf(*invocation.arguments),
+        returnType = methodReturnType.toCanonical(),
         exceptionType = exception.javaClass.name,
         exceptionMessage = exception.message,
-        argumentTypes = null
     )
     storage.record(snap)
 }
@@ -141,10 +144,11 @@ internal fun snapInvocation(
         className = className,
         methodName = methodName,
         parameterTypes = methodParameters,
-        returnType = returnType.toCanonical(),
+        argumentTypes = args.map { getCanonicalTypeFromObject(it) },
         arguments = listOf(*args),
+        returnType = returnType.toCanonical(),
+        resultType = getCanonicalTypeFromObject(result),
         result = result,
-        argumentTypes = null,
         exceptionType = null,
         exceptionMessage = null,
     )
@@ -180,11 +184,12 @@ internal fun snapInvocationException(
         className = className,
         methodName = methodName,
         parameterTypes = methodParameters,
-        returnType = returnType.toCanonical(),
+        argumentTypes = args.map { getCanonicalTypeFromObject(it) },
         arguments = listOf(*args),
+        returnType = returnType.toCanonical(),
         exceptionType = throwable.javaClass.name,
         exceptionMessage = throwable.message,
-        argumentTypes = null,
+        resultType = null,
         result = null,
     )
     val snap = SnapData(
@@ -195,4 +200,31 @@ internal fun snapInvocationException(
     )
     writer.write(snap)
     storage.reset()
+}
+
+internal fun getCanonicalTypeFromObject(obj: Any): String {
+    return when (obj) {
+        is List<*> -> {
+            val elementType = obj.firstOrNull()?.javaClass
+            if (elementType != null) {
+                typeFactory.constructCollectionType(List::class.java, elementType)
+            } else {
+                typeFactory.constructCollectionType(List::class.java, Any::class.java)
+            }
+        }
+        is Set<*> -> {
+            val elementType = obj.firstOrNull()?.javaClass
+            if (elementType != null) {
+                typeFactory.constructCollectionType(Set::class.java, elementType)
+            } else {
+                typeFactory.constructCollectionType(Set::class.java, Any::class.java)
+            }
+        }
+        is Map<*, *> -> {
+            val keyType = obj.keys.firstOrNull()?.javaClass ?: Any::class.java
+            val valueType = obj.values.firstOrNull()?.javaClass ?: Any::class.java
+            typeFactory.constructMapType(Map::class.java, keyType, valueType)
+        }
+        else -> typeFactory.constructType(obj.javaClass)
+    }.toCanonical()
 }
