@@ -1,8 +1,7 @@
 package org.snapmock.mock.mockito
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.junit.jupiter.api.Assertions.assertArrayEquals
-import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.assertThrows
 import org.mockito.ArgumentMatchers
 import org.mockito.InjectMocks
@@ -22,8 +21,8 @@ import java.util.stream.Collectors
 
 private val log = KotlinLogging.logger {}
 
-fun interface AssertionBiConsumer<E, A> : BiConsumer<E, A> {
-    override fun accept(expected: E, actual: A)
+fun interface AssertionBiConsumer<E, A> : BiConsumer<E?, A?> {
+    override fun accept(expected: E?, actual: A?)
 }
 
 object MockitoMockSupport {
@@ -119,7 +118,7 @@ object MockitoMockSupport {
     }
 
     @JvmStatic
-    fun <E, A> doSnapshotTest(
+    fun <E, A> doSnapshotTestFromFields(
         test: Any,
         source: Source,
         expectedConverter: Function<Any?, E>?,
@@ -191,13 +190,18 @@ object MockitoMockSupport {
     }
 
     @JvmStatic
-    fun <E, A> doSnapshotTest(test: Any, source: Source, asserts: AssertionBiConsumer<E, A>) {
-        doSnapshotTest(test, source, null, asserts)
+    fun <E, A> doSnapshotTestFromFields(test: Any, source: Source, asserts: AssertionBiConsumer<E, A>) {
+        doSnapshotTestFromFields(test, source, null, asserts)
     }
 
     @JvmStatic
-    fun doSnapshotTest(test: Any, source: Source) {
-        doSnapshotTest(test, source, null) { expected: Any, actual: Any -> assertEquals(expected, actual) }
+    fun doSnapshotTestFromFields(test: Any, source: Source) {
+        doSnapshotTestFromFields(test, source, null) { expected: Any?, actual: Any? ->
+            if (expected == null) {
+                assertNull(actual)
+            }
+            assertEquals(expected, actual)
+        }
     }
 
     @JvmStatic
@@ -212,7 +216,10 @@ object MockitoMockSupport {
     fun doSnapshotTest(
         source: Source
     ) {
-        doSnapshotTest(source, null) { expected: Any, actual: Any ->
+        doSnapshotTest(source, null) { expected: Any?, actual: Any? ->
+            if (expected == null) {
+                assertNull(actual)
+            }
             if (actual is Array<*>) {
                 assertArrayEquals(expected as Array<*>, actual)
             } else {
@@ -307,7 +314,7 @@ object MockitoMockSupport {
                                     it.trySetAccessible()
                                     it.invoke(subject, dep)
                                 }
-                            } catch (e: NoSuchMethodException) {
+                            } catch (_: NoSuchMethodException) {
                                 // set anyway if no getter
                                 log.trace { "Setting write-only property with setter ${it.name} to value $dep" }
                                 it.trySetAccessible()

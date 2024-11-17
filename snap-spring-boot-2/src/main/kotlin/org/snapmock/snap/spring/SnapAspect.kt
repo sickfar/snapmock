@@ -8,11 +8,9 @@ import org.aspectj.lang.annotation.Around
 import org.aspectj.lang.annotation.Aspect
 import org.aspectj.lang.annotation.Pointcut
 import org.aspectj.lang.reflect.MethodSignature
-import org.snapmock.core.InvocationStorage
-import org.snapmock.core.Snap
-import org.snapmock.core.SnapDepFactory
-import org.snapmock.core.SnapWriter
+import org.snapmock.core.*
 import org.springframework.aop.framework.ProxyFactory
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 import java.lang.reflect.*
@@ -35,6 +33,7 @@ open class SnapAspect(
     private val writer: SnapWriter,
     private val storage: InvocationStorage,
     private val configuration: SnapConfigurationProperties,
+    private val postprocessors: ObjectProvider<SnapResultPostprocessor<*>>
 ) {
 
     private val interceptedBeanCache: MutableMap<Class<*>, Any> = ConcurrentHashMap(50)
@@ -48,7 +47,7 @@ open class SnapAspect(
     }
 
     @Around("onAnyMethodOfClassAnnotatedSnap() || onMethodAnnotatedSnap()")
-    open fun aroundMethod(joinPoint: ProceedingJoinPoint): Any {
+    open fun aroundMethod(joinPoint: ProceedingJoinPoint): Any? {
         val signature = joinPoint.signature as MethodSignature
         val target = joinPoint.target
         val targetClass = target.javaClass
@@ -56,13 +55,31 @@ open class SnapAspect(
         val newTarget = interceptedBeanCache.computeIfAbsent(targetClass) { buildNewTarget(target, targetClass, dependencies) }
         try {
             storage.start()
-            val result = signature.method.invoke(newTarget, *joinPoint.args)
+            val result: Any? = signature.method.invoke(newTarget, *joinPoint.args).also { it: Any? ->
+                postprocessResult(signature.returnType, it)
+            }
             snapInvocation(storage, writer, dependencies, joinPoint, result)
             storage.stop()
             return result
         } catch (e: Throwable) {
             snapInvocationException(storage, writer, dependencies, joinPoint, e)
             throw e
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun postprocessResult(returnType: Class<*>, obj: Any?) {
+        if (obj == null) {
+            return
+        }
+        try {
+            val postprocessor: SnapResultPostprocessor<in Any?>? = postprocessors.find { processor ->
+                val superClass = processor.javaClass.genericInterfaces[0] as ParameterizedType
+                superClass.actualTypeArguments[0] as Class<*> == returnType
+            } as SnapResultPostprocessor<in Any?>?
+            postprocessor?.accept(obj)
+        } catch (e: Throwable) {
+            log.error(e) { "Error calling postprocessor" }
         }
     }
 
@@ -97,7 +114,7 @@ open class SnapAspect(
                 "Cannot create intercepted object ${targetClass.name} because cannot invoke method"
             }
             return oldTarget
-        } catch (e: IllegalAccessException) {
+        } catch (_: IllegalAccessException) {
             log.warn { "Cannot create intercepted object ${targetClass.name} because cannot access object members" }
             return oldTarget
         } catch (e: IllegalStateException) {
@@ -126,7 +143,7 @@ open class SnapAspect(
             val isPublic = Modifier.isPublic(invocation.method.modifiers)
             log.trace { "Dependency method is public: $isPublic" }
             try {
-                val result = method.invoke(dependency, *args)
+                val result: Any? = method.invoke(dependency, *args)
                 if (method.isAnnotationPresent(SnapDepFactory::class.java) ||
                     ((parameterType.isAnnotationPresent(SnapDepFactory::class.java) || isFactoryByFieldOrCtorArg) && isPublic)) {
                     snapFactoryInvocation(storage, parameterType, invocation)
@@ -175,7 +192,7 @@ open class SnapAspect(
                     val wrappedArgument = buildDependencySpy(parameterType, unwrappedArgument, isFactoryAnnotationPresent)
                     check(parameterType.isInstance(wrappedArgument)) { "For class ${targetClass.name} constructor argument $i is not instance of ${parameterType.name}" }
                     arguments[i] = wrappedArgument
-                } catch (e: NoSuchFieldException) {
+                } catch (_: NoSuchFieldException) {
                     throw IllegalStateException("For class ${targetClass.name} constructor argument $parameterName type ${parameterType.name} is not found in fields. Such bean cannot be intercepted to snap")
                 }
             }
@@ -219,7 +236,7 @@ open class SnapAspect(
                     val wrappedArgument = buildDependencySpy(propertyType, arg, isFactoryAnnotationPresent)
                     method.invoke(newTarget, wrappedArgument)
                     dependencies[propertyName] = propertyType.name
-                } catch (e: NoSuchFieldException) {
+                } catch (_: NoSuchFieldException) {
                     throw IllegalStateException("For class ${targetClass.name} property $propertyName of type ${propertyType.name} is not found in fields. Such bean cannot be intercepted to snap")
                 }
             }

@@ -52,6 +52,9 @@ object TestSupport {
     @JvmStatic
     fun <T> subjArg(source: Source, argIndex: Int): T? {
         val snap = snap(source).main
+        if (snap.arguments[argIndex] == null) {
+            return null
+        }
         val argumentType = snap.argumentTypes?.get(argIndex) ?: snap.parameterTypes[argIndex]
         val javaType = typeFactory.constructFromCanonical(argumentType)
         log.debug { "Reading subject invocation argument $argIndex of type $argumentType from source ${source.name}" }
@@ -66,6 +69,9 @@ object TestSupport {
     @JvmStatic
     fun <T> subjResult(source: Source): T? {
         val snap = snap(source).main
+        if (snap.result == null) {
+            return null
+        }
         val resultType = snap.resultType
         val javaType = typeFactory.constructFromCanonical(resultType)
         log.debug { "Reading subject invocation result of type $resultType from source ${source.name}" }
@@ -90,6 +96,9 @@ object TestSupport {
     @JvmStatic
     fun <T> depArg(source: Source, depIndex: Int, argIndex: Int): T? {
         val snap = snap(source).dependents[depIndex]
+        if (snap.arguments[argIndex] == null) {
+            return null
+        }
         val argumentType = snap.argumentTypes?.get(argIndex) ?: snap.parameterTypes[argIndex]
         val javaType = typeFactory.constructFromCanonical(argumentType)
         log.debug { "Reading dependency $depIndex invocation argument $argIndex of type $javaType from source ${source.name}" }
@@ -99,6 +108,9 @@ object TestSupport {
     @JvmStatic
     fun <T> factArg(source: Source, depIndex: Int, argIndex: Int): T? {
         val snap = snap(source).factories[depIndex]
+        if (snap.arguments[argIndex] == null) {
+            return null
+        }
         val argumentType = snap.argumentTypes?.get(argIndex) ?: snap.parameterTypes[argIndex]
         val javaType = typeFactory.constructFromCanonical(argumentType)
         log.debug { "Reading dependency $depIndex factory invocation argument $argIndex of type $javaType from source ${source.name}" }
@@ -108,6 +120,9 @@ object TestSupport {
     @JvmStatic
     fun <T> depResult(source: Source, depIndex: Int): T? {
         val snap = snap(source).dependents[depIndex]
+        if (snap.result == null) {
+            return null
+        }
         val resultType = snap.resultType
         val javaType = typeFactory.constructFromCanonical(resultType)
         log.debug { "Reading dependency $depIndex invocation result of type $resultType from source ${source.name}" }

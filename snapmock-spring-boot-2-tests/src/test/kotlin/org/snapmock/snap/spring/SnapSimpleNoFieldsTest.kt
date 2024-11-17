@@ -13,13 +13,12 @@ import org.snapmock.core.SnapData
 import org.snapmock.core.objectMapper
 import org.snapmock.mock.mockito.MockitoMockSupport
 import org.snapmock.snap.spring.simple.SimpleApp
-import org.snapmock.snap.spring.simple.hello.HelloDataProvider
-import org.snapmock.snap.spring.simple.hello.HelloFactory
-import org.snapmock.snap.spring.simple.hello.HelloRepository
-import org.snapmock.snap.spring.simple.hello.HelloService
+import org.snapmock.snap.spring.simple.hello.*
 import org.springframework.boot.SpringApplication
 import org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext
 import org.springframework.util.FileSystemUtils
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody
+import java.io.ByteArrayOutputStream
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -157,6 +156,123 @@ class SnapSimpleNoFieldsTest {
 
         assertDoesNotThrow {
             MockitoMockSupport.doSnapshotTest(PathSource(file))
+        }
+        FileSystemUtils.deleteRecursively(dir)
+    }
+
+    @Test
+    fun testResultNull() {
+        val dir = Files.createTempDirectory("snap-test").toAbsolutePath().normalize()
+        assumeTrue(Files.isDirectory(dir) && Files.exists(dir) && Files.list(dir).count() == 0L)
+        val application = SpringApplication(SimpleApp::class.java)
+        application.setDefaultProperties(mapOf("snapmock.snap.directory" to dir.toString()))
+        val context = application.run() as ServletWebServerApplicationContext
+        val port = context.webServer.port
+        val httpClient = HttpClient.newHttpClient()
+        val request = HttpRequest.newBuilder().GET().uri(URI.create("http://localhost:$port/null")).build()
+        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+        SpringApplication.exit(context)
+        assertEquals(response.statusCode(), 200)
+        val file = Files.list(dir)
+            .filter {
+                it.name.startsWith("${HelloService::class.simpleName}")
+                        && it.name.endsWith(".json")
+            }
+            .findFirst()
+            .getOrNull()
+        assertNotNull(file)
+        val snap = Files.newInputStream(file).use {
+            objectMapper.readValue(it, SnapData::class.java)
+        }
+        assertEquals(HelloService::class.qualifiedName, snap.main.className)
+        assertEquals("getNull", snap.main.methodName)
+        assertThat(snap.dependents).hasSize(0)
+
+        assertDoesNotThrow {
+            MockitoMockSupport.doSnapshotTest(PathSource(file))
+        }
+        FileSystemUtils.deleteRecursively(dir)
+    }
+
+    @Test
+    fun testDepResultAndArgNull() {
+        val dir = Files.createTempDirectory("snap-test").toAbsolutePath().normalize()
+        assumeTrue(Files.isDirectory(dir) && Files.exists(dir) && Files.list(dir).count() == 0L)
+        val application = SpringApplication(SimpleApp::class.java)
+        application.setDefaultProperties(mapOf("snapmock.snap.directory" to dir.toString()))
+        val context = application.run() as ServletWebServerApplicationContext
+        val port = context.webServer.port
+        val httpClient = HttpClient.newHttpClient()
+        val request = HttpRequest.newBuilder().GET().uri(URI.create("http://localhost:$port/null/dep")).build()
+        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+        SpringApplication.exit(context)
+        assertEquals(response.statusCode(), 200)
+        val file = Files.list(dir)
+            .filter {
+                it.name.startsWith("${HelloService::class.simpleName}")
+                        && it.name.endsWith(".json")
+            }
+            .findFirst()
+            .getOrNull()
+        assertNotNull(file)
+        val snap = Files.newInputStream(file).use {
+            objectMapper.readValue(it, SnapData::class.java)
+        }
+        assertEquals(HelloService::class.qualifiedName, snap.main.className)
+        assertEquals("getDepNull", snap.main.methodName)
+        assertThat(snap.dependents).hasSize(1)
+        assertThat(snap.dependents).singleElement()
+            .hasFieldOrPropertyWithValue("className", HelloRepository::class.qualifiedName)
+        assertThat(snap.dependents).singleElement().hasFieldOrPropertyWithValue("methodName", "getNull")
+        assertThat(snap.dependents).singleElement().extracting("arguments", `as`(InstanceOfAssertFactories.LIST))
+            .hasSize(1).singleElement().isNull()
+
+        assertDoesNotThrow {
+            MockitoMockSupport.doSnapshotTest(PathSource(file))
+        }
+        FileSystemUtils.deleteRecursively(dir)
+    }
+
+    @Test
+    fun testStreamingResponseBodyPostprocessor() {
+        val dir = Files.createTempDirectory("snap-test").toAbsolutePath().normalize()
+        assumeTrue(Files.isDirectory(dir) && Files.exists(dir) && Files.list(dir).count() == 0L)
+        val application = SpringApplication(SimpleApp::class.java)
+        application.setDefaultProperties(mapOf("snapmock.snap.directory" to dir.toString()))
+        val context = application.run() as ServletWebServerApplicationContext
+        val port = context.webServer.port
+        val httpClient = HttpClient.newHttpClient()
+        val request = HttpRequest.newBuilder().GET().uri(URI.create("http://localhost:$port/streaming")).build()
+        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray())
+        println(String(response.body()))
+        SpringApplication.exit(context)
+        assertEquals(response.statusCode(), 200)
+        val file = Files.list(dir)
+            .filter {
+                it.name.startsWith("${HelloService::class.simpleName}")
+                        && it.name.endsWith(".json")
+            }
+            .findFirst()
+            .getOrNull()
+        assertNotNull(file)
+        val snap = Files.newInputStream(file).use {
+            objectMapper.readValue(it, SnapData::class.java)
+        }
+        assertEquals(HelloService::class.qualifiedName, snap.main.className)
+        assertEquals("getStreaming", snap.main.methodName)
+        assertThat(snap.dependents).hasSize(1)
+        assertThat(snap.dependents).singleElement()
+            .hasFieldOrPropertyWithValue("className", HelloRepository::class.qualifiedName)
+        assertThat(snap.dependents).singleElement().hasFieldOrPropertyWithValue("methodName", "getMessage")
+
+        assertDoesNotThrow {
+            MockitoMockSupport.doSnapshotTest(PathSource(file), { null }) { _expected: Nothing?, actual: StreamingResponseBody? ->
+                assertNotNull(actual)
+                val stream = ByteArrayOutputStream()
+                actual.writeTo(stream)
+                val data = objectMapper.readValue(stream.toByteArray(), HelloData::class.java)
+                assertEquals("Hello World", data.data)
+            }
         }
         FileSystemUtils.deleteRecursively(dir)
     }

@@ -1,9 +1,13 @@
 package org.snapmock.snap.spring.simple.hello
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.kotlinModule
 import org.snapmock.core.Snap
 import org.snapmock.core.SnapDepFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody
+import java.io.OutputStream
 
 @Snap
 @Service
@@ -35,6 +39,23 @@ class HelloService(
             HelloFactory.METHOD -> HelloData(factoryByMethod.provider.getGreeting())
             HelloFactory.FIELD -> HelloData(factoryByField.provider.getGreeting())
             HelloFactory.SETTER -> HelloData(factoryBySetter.provider.getGreeting())
+        }
+    }
+
+    fun getNull(): HelloData? {
+        return null
+    }
+
+    fun getDepNull(): HelloData? {
+        return helloRepository.getNull(null)
+    }
+
+    fun getStreaming(): StreamingResponseBody {
+        return object: StreamingResponseBody {
+            override fun writeTo(os: OutputStream) {
+                ObjectMapper().registerModule(kotlinModule())
+                    .writeValue(os, HelloData(helloRepository.message))
+            }
         }
     }
 

@@ -14,7 +14,7 @@ interface Mock {
 data class InvokeMock(
     val dependency: FieldRef,
     val method: String,
-    val arguments: List<Any>,
+    val arguments: List<Any?>,
     var result: Any?,
     val source: Path,
     val index: Int,
@@ -24,7 +24,7 @@ data class InvokeMock(
 data class ThrowMock(
     val dependency: FieldRef,
     val method: String,
-    val arguments: List<Any>,
+    val arguments: List<Any?>,
     val exceptionType: String,
     val exceptionMessage: String?,
     val source: Path,

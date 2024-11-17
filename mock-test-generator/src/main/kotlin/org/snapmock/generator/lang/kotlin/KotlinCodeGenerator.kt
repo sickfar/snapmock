@@ -14,6 +14,7 @@ class KotlinCodeGenerator(
     private val output: Path
 ) : CodeGenerator {
     override fun generate(className: String, methodName: String?, tests: List<SnapMockTest>): Path {
+        TODO("Not supported yet")
         val packageName = className.substringBeforeLast('.')
         val simpleClassName = className.substringAfterLast('.')
         val testClassName = when (mode) {

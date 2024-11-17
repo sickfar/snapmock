@@ -87,7 +87,7 @@ class SnapSimpleTest {
         assertThat(snap.dependents).singleElement().hasFieldOrPropertyWithValue("methodName", "getMessage")
 
         assertDoesNotThrow {
-            MockitoMockSupport.doSnapshotTest(this, PathSource(file))
+            MockitoMockSupport.doSnapshotTestFromFields(this, PathSource(file))
         }
         FileSystemUtils.deleteRecursively(dir)
     }
@@ -126,7 +126,7 @@ class SnapSimpleTest {
             .hasFieldOrPropertyWithValue("data", "Hello test")
 
         assertDoesNotThrow {
-            MockitoMockSupport.doSnapshotTest(this, PathSource(file))
+            MockitoMockSupport.doSnapshotTestFromFields(this, PathSource(file))
         }
         FileSystemUtils.deleteRecursively(dir)
     }
@@ -170,7 +170,7 @@ class SnapSimpleTest {
             // mockito does not inject setters and fields
             helloService.factoryBySetter = factoryBySetter
             helloService.factoryByField = factoryByField
-            MockitoMockSupport.doSnapshotTest(this, PathSource(file))
+            MockitoMockSupport.doSnapshotTestFromFields(this, PathSource(file))
         }
         FileSystemUtils.deleteRecursively(dir)
     }

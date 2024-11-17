@@ -7,6 +7,7 @@ import org.aopalliance.intercept.MethodInvocation
 import org.aspectj.lang.ProceedingJoinPoint
 import org.aspectj.lang.reflect.MethodSignature
 import org.snapmock.core.*
+import org.springframework.aop.framework.AopProxyUtils
 import java.lang.reflect.Type
 import java.util.*
 
@@ -18,7 +19,7 @@ internal fun snapDependencyInvocation(
     storage: InvocationStorage,
     dependencyType: Class<*>,
     invocation: MethodInvocation,
-    result: Any
+    result: Any?
 ) {
     log.debug { "Dependency invocation: $invocation" }
     val method = invocation.method
@@ -127,7 +128,7 @@ internal fun snapInvocation(
     writer: SnapWriter,
     dependencies: Map<String, String>,
     joinPoint: ProceedingJoinPoint,
-    result: Any
+    result: Any?
 ) {
     log.debug { "Snapping invocation" }
     val signature = joinPoint.signature as MethodSignature
@@ -202,10 +203,11 @@ internal fun snapInvocationException(
     storage.reset()
 }
 
-internal fun getCanonicalTypeFromObject(obj: Any): String {
+internal fun getCanonicalTypeFromObject(obj: Any?): String? {
     return when (obj) {
+        null -> null
         is List<*> -> {
-            val elementType = obj.firstOrNull()?.javaClass
+            val elementType = obj.firstOrNull()?.let { AopProxyUtils.ultimateTargetClass(it) }
             if (elementType != null) {
                 typeFactory.constructCollectionType(List::class.java, elementType)
             } else {
@@ -213,7 +215,7 @@ internal fun getCanonicalTypeFromObject(obj: Any): String {
             }
         }
         is Set<*> -> {
-            val elementType = obj.firstOrNull()?.javaClass
+            val elementType = obj.firstOrNull()?.let { AopProxyUtils.ultimateTargetClass(it) }
             if (elementType != null) {
                 typeFactory.constructCollectionType(Set::class.java, elementType)
             } else {
@@ -221,10 +223,10 @@ internal fun getCanonicalTypeFromObject(obj: Any): String {
             }
         }
         is Map<*, *> -> {
-            val keyType = obj.keys.firstOrNull()?.javaClass ?: Any::class.java
-            val valueType = obj.values.firstOrNull()?.javaClass ?: Any::class.java
+            val keyType = obj.keys.firstOrNull()?.let { AopProxyUtils.ultimateTargetClass(it) } ?: Any::class.java
+            val valueType = obj.values.firstOrNull()?.let { AopProxyUtils.ultimateTargetClass(it) } ?: Any::class.java
             typeFactory.constructMapType(Map::class.java, keyType, valueType)
         }
-        else -> typeFactory.constructType(obj.javaClass)
-    }.toCanonical()
+        else -> typeFactory.constructType(AopProxyUtils.ultimateTargetClass(obj))
+    }?.toCanonical()
 }
