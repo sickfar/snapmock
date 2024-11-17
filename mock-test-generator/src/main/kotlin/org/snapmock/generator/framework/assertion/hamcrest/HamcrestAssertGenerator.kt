@@ -9,7 +9,17 @@ import org.snapmock.generator.TestFramework
 import org.snapmock.generator.data.Assertion
 import org.snapmock.generator.data.ResultAssertion
 import org.snapmock.generator.data.ThrowsAssertion
-import org.snapmock.generator.lang.common.*
+import org.snapmock.generator.lang.common.ClassRef
+import org.snapmock.generator.lang.common.FieldRef
+import org.snapmock.generator.lang.common.InstanceMethod
+import org.snapmock.generator.lang.common.JvmAnnotation
+import org.snapmock.generator.lang.common.Lambda
+import org.snapmock.generator.lang.common.NumericLiteral
+import org.snapmock.generator.lang.common.StaticMethod
+import org.snapmock.generator.lang.common.StringLiteral
+import org.snapmock.generator.lang.common.SyntaxElement
+import org.snapmock.generator.lang.common.Variable
+import org.snapmock.generator.lang.common.VariableDefinition
 
 class HamcrestAssertGenerator(
     private val testFramework: TestFramework

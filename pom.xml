@@ -9,11 +9,11 @@
     <version>1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <modules>
-        <module>snap-spring-boot-2</module>
+        <module>snap-spring-boot</module>
         <module>mock-mockito</module>
         <module>snapmock-core</module>
         <module>mock-test-generator</module>
-        <module>snapmock-spring-boot-2-tests</module>
+        <module>snapmock-spring-boot-tests</module>
     </modules>
 
     <properties>

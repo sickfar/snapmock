@@ -5,8 +5,18 @@ import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
 import org.mockito.stubbing.Stubber
-import org.snapmock.generator.lang.common.*
-import java.lang.String
+import org.snapmock.generator.lang.common.FieldRef
+import org.snapmock.generator.lang.common.InstanceFieldRef
+import org.snapmock.generator.lang.common.InstanceMethod
+import org.snapmock.generator.lang.common.Lambda
+import org.snapmock.generator.lang.common.NumericLiteral
+import org.snapmock.generator.lang.common.Parameter
+import org.snapmock.generator.lang.common.StaticFieldRef
+import org.snapmock.generator.lang.common.StaticMethod
+import org.snapmock.generator.lang.common.StringLiteral
+import org.snapmock.generator.lang.common.This
+import org.snapmock.generator.lang.common.Variable
+import org.snapmock.generator.lang.common.VariableDefinition
 
 class CodeBuilderKtTest {
 

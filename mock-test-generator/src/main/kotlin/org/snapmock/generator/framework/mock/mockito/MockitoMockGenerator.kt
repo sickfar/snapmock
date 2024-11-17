@@ -15,7 +15,13 @@ import org.snapmock.generator.TestFramework
 import org.snapmock.generator.data.InvokeMock
 import org.snapmock.generator.data.Mock
 import org.snapmock.generator.data.ThrowMock
-import org.snapmock.generator.lang.common.*
+import org.snapmock.generator.lang.common.ClassAnnotationExpression
+import org.snapmock.generator.lang.common.Field
+import org.snapmock.generator.lang.common.FieldRef
+import org.snapmock.generator.lang.common.InstanceMethod
+import org.snapmock.generator.lang.common.JvmAnnotation
+import org.snapmock.generator.lang.common.NumericLiteral
+import org.snapmock.generator.lang.common.StaticMethod
 import org.snapmock.mock.mockito.MockitoTestSupport
 import java.nio.file.Path
 

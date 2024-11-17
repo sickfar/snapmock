@@ -2,7 +2,18 @@ package org.snapmock.generator.lang.java
 
 import com.palantir.javapoet.ClassName
 import com.palantir.javapoet.CodeBlock
-import org.snapmock.generator.lang.common.*
+import org.snapmock.generator.lang.common.ClassRef
+import org.snapmock.generator.lang.common.InstanceFieldRef
+import org.snapmock.generator.lang.common.InstanceMethod
+import org.snapmock.generator.lang.common.Lambda
+import org.snapmock.generator.lang.common.NamedRef
+import org.snapmock.generator.lang.common.NumericLiteral
+import org.snapmock.generator.lang.common.StaticFieldRef
+import org.snapmock.generator.lang.common.StaticMethod
+import org.snapmock.generator.lang.common.StringLiteral
+import org.snapmock.generator.lang.common.SyntaxElement
+import org.snapmock.generator.lang.common.This
+import org.snapmock.generator.lang.common.VariableDefinition
 
 fun buildCodeBlockFromExpression(expression: SyntaxElement): CodeBlock {
     return when (expression) {
@@ -101,9 +112,9 @@ fun buildLambda(expression: Lambda): CodeBlock {
 }
 
 fun buildThis(expression: This): CodeBlock {
-    if (expression.omitThis) {
-        return CodeBlock.of("")
+    return if (expression.omitThis) {
+        CodeBlock.of("")
     } else {
-        return CodeBlock.of("this")
+        CodeBlock.of("this")
     }
 }

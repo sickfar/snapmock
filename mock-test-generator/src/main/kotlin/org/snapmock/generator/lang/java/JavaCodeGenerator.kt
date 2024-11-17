@@ -1,6 +1,13 @@
 package org.snapmock.generator.lang.java
 
-import com.palantir.javapoet.*
+import com.palantir.javapoet.AnnotationSpec
+import com.palantir.javapoet.ClassName
+import com.palantir.javapoet.CodeBlock
+import com.palantir.javapoet.FieldSpec
+import com.palantir.javapoet.JavaFile
+import com.palantir.javapoet.MethodSpec
+import com.palantir.javapoet.TypeName
+import com.palantir.javapoet.TypeSpec
 import org.snapmock.core.ClassPathResourceSource
 import org.snapmock.core.Source
 import org.snapmock.core.TestSupport

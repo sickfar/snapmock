@@ -1,7 +1,9 @@
 package org.snapmock.mock.mockito
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertArrayEquals
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.assertThrows
 import org.mockito.ArgumentMatchers
 import org.mockito.InjectMocks
