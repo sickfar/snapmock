@@ -1,21 +1,21 @@
 {
   "main": {
-    "className": "org.snapmock.snap.spring.simple.hello.HelloService",
+    "className": "io.github.sickfar.snapmock.spring.simple.hello.HelloService",
     "methodName": "get",
     "parameterTypes": [],
     "arguments": [],
     "argumentTypes": null,
-    "returnType": "org.snapmock.snap.spring.simple.hello.HelloData",
+    "returnType": "io.github.sickfar.snapmock.spring.simple.hello.HelloData",
     "result": null,
     "exceptionType": "java.lang.IllegalStateException",
     "exceptionMessage": "IllegalState"
   },
   "dependencies": {
-    "repository": "org.snapmock.snap.spring.simple.hello.HelloRepository"
+    "repository": "io.github.sickfar.snapmock.spring.simple.hello.HelloRepository"
   },
   "dependents": [
     {
-      "className": "org.snapmock.snap.spring.simple.hello.HelloRepository",
+      "className": "io.github.sickfar.snapmock.spring.simple.hello.HelloRepository",
       "methodName": "getMessage",
       "parameterTypes": [],
       "arguments": [],
