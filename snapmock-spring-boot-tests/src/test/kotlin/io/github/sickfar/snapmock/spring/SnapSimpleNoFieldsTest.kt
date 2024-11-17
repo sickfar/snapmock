@@ -149,7 +149,7 @@ class SnapSimpleNoFieldsTest {
         assertThat(snap.factories).hasSize(1).singleElement()
             .hasFieldOrPropertyWithValue(
                 "className",
-                "io.github.sickfar.snapmock.snap.spring.simple.hello.HelloProviderFactoryBy" + factory.name.lowercase()
+                "io.github.sickfar.snapmock.spring.simple.hello.HelloProviderFactoryBy" + factory.name.lowercase()
                     .replaceFirstChar { it.uppercase() })
         assertThat(snap.factories).singleElement()
             .hasFieldOrPropertyWithValue("methodName", "getProvider")

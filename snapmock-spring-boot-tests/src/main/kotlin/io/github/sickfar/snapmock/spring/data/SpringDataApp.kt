@@ -5,6 +5,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.context.annotation.PropertySource
 
 @EnableSnap
-@SpringBootApplication(scanBasePackages = ["io.github.sickfar.snapmock.snap.spring.data"])
+@SpringBootApplication(scanBasePackages = ["io.github.sickfar.snapmock.spring.data"])
 @PropertySource("classpath:data/application.properties")
 class SpringDataApp

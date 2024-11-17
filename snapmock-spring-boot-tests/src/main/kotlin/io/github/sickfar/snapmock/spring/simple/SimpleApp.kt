@@ -7,7 +7,7 @@ import org.springframework.context.annotation.PropertySource
 
 @EnableSnap
 @SpringBootApplication(
-    scanBasePackages = ["io.github.sickfar.snapmock.snap.spring.simple"],
+    scanBasePackages = ["io.github.sickfar.snapmock.spring.simple"],
     // because we have data source plugged in, but I want keep it simple here
     exclude = [DataSourceAutoConfiguration::class]
 )

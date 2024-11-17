@@ -165,7 +165,7 @@ class SnapSimpleTest {
         assertEquals(HelloService::class.qualifiedName, snap.main.className)
         assertEquals("getByFactory", snap.main.methodName)
         assertThat(snap.factories).hasSize(1).singleElement()
-            .hasFieldOrPropertyWithValue("className", "io.github.sickfar.snapmock.snap.spring.simple.hello.HelloProviderFactoryBy" + factory.name.lowercase().replaceFirstChar { it.uppercase() })
+            .hasFieldOrPropertyWithValue("className", "io.github.sickfar.snapmock.spring.simple.hello.HelloProviderFactoryBy" + factory.name.lowercase().replaceFirstChar { it.uppercase() })
         assertThat(snap.factories).singleElement()
             .hasFieldOrPropertyWithValue("methodName", "getProvider")
         assertThat(snap.dependents).hasSize(1).singleElement()
