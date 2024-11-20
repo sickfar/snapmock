@@ -1,0 +1,32 @@
+{
+  "main": {
+    "className": "io.github.sickfar.snapmock.spring.simple.hello.HelloService",
+    "methodName": "get",
+    "parameterTypes": [],
+    "arguments": [],
+    "argumentTypes": null,
+    "returnType": "io.github.sickfar.snapmock.spring.simple.app.HelloData",
+    "result": {
+      "data": "Hello World"
+    },
+    "exceptionType": null,
+    "exceptionMessage": null
+  },
+  "dependencies": {
+    "repository": "io.github.sickfar.snapmock.spring.simple.hello.HelloRepository"
+  },
+  "dependents": [
+    {
+      "className": "io.github.sickfar.snapmock.spring.simple.hello.HelloRepository",
+      "methodName": "getMessage",
+      "parameterTypes": [],
+      "arguments": [],
+      "argumentTypes": null,
+      "returnType": "java.lang.String",
+      "result": "Hello World",
+      "exceptionType": null,
+      "exceptionMessage": null
+    }
+  ],
+  "factories": []
+}
