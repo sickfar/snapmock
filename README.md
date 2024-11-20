@@ -189,3 +189,5 @@ snapmock-gen --help
 
 # License
 snapmock is licensed under the MIT License.
+
+Developed by Roman Aksenenko (sickfar69@gmail.com)
