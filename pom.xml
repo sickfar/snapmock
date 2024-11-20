@@ -29,7 +29,7 @@
 
     <scm>
         <connection>scm:git:git://github.com/sickfar/snapmock.git</connection>
-        <developerConnection>scm:git:ssh://github.com:sickfar/snapmock.git</developerConnection>
+        <developerConnection>scm:git:ssh://github.com/sickfar/snapmock.git</developerConnection>
         <url>https://github.com/sickfar/snapmock/tree/main</url>
     </scm>
 
