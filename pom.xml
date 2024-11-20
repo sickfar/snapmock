@@ -75,7 +75,7 @@
                         <configuration>
                             <publishingServerId>central</publishingServerId>
                             <waitUntil>uploaded</waitUntil>
-                            <excludeArtifacts>snapmock-spring-boot-tests</excludeArtifacts>
+                            <excludeArtifacts>snapmock-spring-boot-tests,snapmock-test-generator</excludeArtifacts>
                         </configuration>
                     </plugin>
                     <plugin>

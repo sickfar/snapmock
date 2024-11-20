@@ -1,0 +1,10 @@
+#!/bin/sh
+
+JAR_FILE="$(dirname "$0")/snapmock-gen.jar"
+
+if [ ! -f "$JAR_FILE" ]; then
+  echo "Error: JAR file not found: $JAR_FILE"
+  exit 1
+fi
+
+java -jar "$JAR_FILE" "$@"
