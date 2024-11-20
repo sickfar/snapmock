@@ -77,7 +77,7 @@ fun process(
     }
 }
 
-class SnapMockGeneratorCommand : CliktCommand() {
+class SnapMockGeneratorCommand : CliktCommand("snapmock-gen") {
     private val input by argument(help = "Input directory or file").path(mustExist = true, mustBeReadable = true)
     private val output by option("-o", "--output", help = "Output directory").path(
         mustExist = false, mustBeWritable = true
