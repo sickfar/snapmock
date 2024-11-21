@@ -36,3 +36,4 @@ build/
 
 .snap/
 .gen/
+dependency-reduced-pom.xml

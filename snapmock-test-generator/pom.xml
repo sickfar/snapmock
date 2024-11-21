@@ -12,6 +12,7 @@
 
     <properties>
         <maven-assembly-plugin.version>3.7.1</maven-assembly-plugin.version>
+        <maven-shade-plugin.version>3.6.0</maven-shade-plugin.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <kotlin.code.style>official</kotlin.code.style>
         <kotlin.compiler.jvmTarget>17</kotlin.compiler.jvmTarget>
@@ -26,7 +27,50 @@
         <profile>
             <id>release</id>
             <build>
+                <finalName>snapmock-gen</finalName>
                 <plugins>
+                    <plugin>
+                        <groupId>org.jetbrains.dokka</groupId>
+                        <artifactId>dokka-maven-plugin</artifactId>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <configuration>
+                            <skipSource>true</skipSource>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-shade-plugin</artifactId>
+                        <version>${maven-shade-plugin.version}</version>
+                        <configuration>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>shade</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
                     <plugin>
                         <artifactId>maven-assembly-plugin</artifactId>
                         <version>${maven-assembly-plugin.version}</version>
@@ -47,27 +91,6 @@
                             </descriptors>
                         </configuration>
                     </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-gpg-plugin</artifactId>
-                        <configuration>
-                            <skip>true</skip>
-                        </configuration>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.jetbrains.dokka</groupId>
-                        <artifactId>dokka-maven-plugin</artifactId>
-                        <configuration>
-                            <skip>true</skip>
-                        </configuration>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-source-plugin</artifactId>
-                        <configuration>
-                            <skipSource>true</skipSource>
-                        </configuration>
-                    </plugin>
                 </plugins>
             </build>
         </profile>
@@ -83,6 +106,18 @@
                 <version>1.6.0</version>
                 <configuration>
                     <mainClass>io.github.sickfar.snapmock.generator.SnapMockGeneratorMainKt</mainClass>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <mainClass>io.github.sickfar.snapmock.generator.SnapMockGeneratorMainKt</mainClass>
+                        </manifest>
+                    </archive>
                 </configuration>
             </plugin>
         </plugins>

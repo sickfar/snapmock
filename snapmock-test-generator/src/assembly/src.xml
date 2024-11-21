@@ -32,5 +32,12 @@
             </includes>
             <fileMode>0755</fileMode>
         </fileSet>
+        <fileSet>
+            <directory>target</directory>
+            <outputDirectory>/</outputDirectory>
+            <includes>
+                <include>snapmock-gen.jar.asc</include>
+            </includes>
+        </fileSet>
     </fileSets>
 </assembly>
